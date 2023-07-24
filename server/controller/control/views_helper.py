@@ -40,8 +40,6 @@ def get_serializer(entity_type, data, many):
             return ExpenseSerializer(data=data, many=many)
         case 'paycheck':
             return PaycheckSerializer(data=data, many=many)
-        case 'profit':
-            return IncomeSerializer(data=data, many=many)
         # case 'bills':
         #     return BillSerializer
         # case 'subscription':
@@ -58,8 +56,6 @@ def get_entity_list(entity_type, pusher):
             return Expense.objects.get(pusher=pusher)
         case 'paycheck':
             return Paycheck.objects.get(pusher=pusher)
-        case 'profit':
-            return Profit.objects.get(pusher=pusher)
 
 
 def get_entity(entity_type, entity_id):
@@ -70,8 +66,6 @@ def get_entity(entity_type, entity_id):
             return Expense.objects.get(id=entity_id)
         case 'paycheck':
             return Paycheck.objects.get(id=entity_id)
-        case 'profit':
-            return Profit.objects.get(id=entity_id)
 
 
 def encapsulation_exists(entity_type, entity_name, pusher):

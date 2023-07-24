@@ -68,6 +68,28 @@ class FundValue(models.Model):
                                                                          self.fund.pusher.primaryUser.email)
 
 
+class Account(models.Model):
+    pusher = models.ForeignKey(Pusher, on_delete=models.CASCADE)
+    name = models.CharField(max_length=20)
+    acct_number = models.CharField(max_length=15, null=True, blank=True)
+    rout_number = models.CharField(max_length=15, null=True, blank=True)
+
+    def __str__(self):
+        return "%d ACCOUNT: %s -> PUSHER: %s -> USER: %s" % \
+            (self.id, self.name, self.pusher.name, self.pusher.primaryUser.username)
+
+
+class AccountValue(models.Model):
+    account = models.ForeignKey(Account, on_delete=models.CASCADE)
+    value = models.DecimalField(max_digits=10, decimal_places=2)
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return "%d VALUE: $%.2f -> ACCOUNT: %s -> PUSHER: %s -> USER: %s" % \
+            (self.id, float(self.value), self.account.name, self.account.pusher.name,
+             self.account.pusher.primaryUser.username)
+
+
 class Income(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     pusher = models.ForeignKey(Pusher, on_delete=models.CASCADE)
@@ -117,39 +139,7 @@ class Paycheck(models.Model):
 
     def __str__(self):
         return "%d PAYCHECK: $%.2f -> COMPANY: %s -> PUSHER: %s -> USER: %s" % \
-               (self.id, float(self.net_amt), self.company_name, self.pusher.name, self.user.email)
-
-
-class Profit(models.Model):
-    pusher = models.ForeignKey(Pusher, on_delete=models.CASCADE)
-    amount = models.DecimalField(max_digits=9, decimal_places=2)
-    timestamp = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        return "%d PROFIT: $%.2f -> PUSHER: %s -> USER: %s" % \
-               (self.id, float(self.amount), self.pusher.name, self.pusher.primaryUser.username)
-
-
-class Account(models.Model):
-    pusher = models.ForeignKey(Pusher, on_delete=models.CASCADE)
-    name = models.CharField(max_length=20)
-    acct_number = models.CharField(max_length=15, null=True, blank=True)
-    rout_number = models.CharField(max_length=15, null=True, blank=True)
-
-    def __str__(self):
-        return "%d ACCOUNT: %s -> PUSHER: %s -> USER: %s" % \
-               (self.id, self.name, self.pusher.name, self.pusher.primaryUser.username)
-
-
-class AccountValue(models.Model):
-    account = models.ForeignKey(Account, on_delete=models.CASCADE)
-    value = models.DecimalField(max_digits=10, decimal_places=2)
-    timestamp = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        return "%d VALUE: $%.2f -> ACCOUNT: %s -> PUSHER: %s -> USER: %s" % \
-               (self.id, float(self.value), self.account.name, self.account.pusher.name,
-                self.account.pusher.primaryUser.username)
+            (self.id, float(self.net_amt), self.company_name, self.pusher.name, self.user.email)
 
 
 class ExpNetWorth(models.Model):
@@ -159,4 +149,4 @@ class ExpNetWorth(models.Model):
 
     def __str__(self):
         return "%d NET WORTH: $%.2f -> PUSHER: %s -> USER: %s" % \
-               (self.id, float(self.amount), self.pusher.name, self.pusher.primaryUser.username)
+            (self.id, float(self.amount), self.pusher.name, self.pusher.primaryUser.username)
