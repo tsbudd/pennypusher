@@ -11,7 +11,7 @@ from rest_framework import permissions
 @api_view(['GET'])
 @authentication_classes([SessionAuthentication, BasicAuthentication])
 @permission_classes([permissions.IsAdminUser])
-def user_all(request):
+def user_all():
     data = User.objects.all()
     serializer = UserSerializer(data, many=True)
     return Response(serializer.data)

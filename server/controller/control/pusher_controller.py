@@ -27,21 +27,21 @@ def pusher_all(request, format=None):
 @permission_classes([IsAuthenticated])
 def pusher_new(request, format=None):
     try:
-        user = User.objects.get(username=request.data['primaryUser'])
+        user = request.user
+        pusher_name = request.data['name']
 
-        request.data.update({'primaryUser': user.id})
+        if Pusher.objects.filter(primaryUser=user, name=pusher_name).exists():
+            return failure_response("The user " + user + " already has a pusher called " + pusher_name + ".",
+                                    status.HTTP_400_BAD_REQUEST)
+
         request.data.update({'key': generate_key()})
 
-        if user == request.user:
-            if Pusher.objects.filter(primaryUser=user, name=request.data['name']).exists():
-                return Response(status=status.HTTP_400_BAD_REQUEST)
-            serializer = PusherSerializer(data=request.data)
-            if serializer.is_valid():
-                serializer.save()
-                return Response(serializer.data)
-            return Response(serializer.errors, status=status.HTTP_204_NO_CONTENT)
-        else:
-            return Response(status=status.HTTP_401_UNAUTHORIZED)
+        serializer = PusherSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_204_NO_CONTENT)
+
     except User.DoesNotExist:
         return Response(status=status.HTTP_400_BAD_REQUEST)
 
@@ -52,28 +52,34 @@ def pusher_new(request, format=None):
 @permission_classes([IsAuthenticated])
 def pusher_func(request, format=None):
     try:
-        pusher = Pusher.objects.get(key=request.data['key'])
-    except Pusher.DoesNotExist:
-        return Response(status=status.HTTP_400_BAD_REQUEST)
+        pusher_key = request.GET.get('pusher_key')
+        user = request.user
 
-    # if requesting user doesn't have access to the pusher env
-    if not PusherAccess.objects.filter(user=request.user, pusher=pusher).exists():
-        return Response(status=status.HTTP_401_UNAUTHORIZED)
+        if not pusher_exists(pusher_key):
+            return failure_response("The pusher_key " + pusher_key + " is not valid.", status.HTTP_400_BAD_REQUEST)
+        if not user_has_access(user, pusher_key):
+            return failure_response("The user " + user + " does not have access to the pusher.",
+                                    status.HTTP_401_UNAUTHORIZED)
 
-    if request.method == 'GET':
-        serializer = PusherSerializer(pusher)
-        return Response(serializer.data)
+        pusher = Pusher.objects.get(key=pusher_key)
 
-    elif request.method == 'PUT':
-        serializer = PusherSerializer(pusher, data=request.data)
-        if serializer.is_valid():
-            serializer.save()
+        if request.method == 'GET':
+            serializer = PusherSerializer(pusher)
             return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_204_NO_CONTENT)
 
-    elif request.method == 'DELETE':
-        pusher.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        elif request.method == 'PUT':
+            serializer = PusherSerializer(pusher, data=request.data)
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        elif request.method == 'DELETE':
+            pusher.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+
+    except TypeError as e:
+        return failure_response("System Error", status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 # -------------------------------------------- PUSHER ACCESS ------------------------------------------
@@ -83,32 +89,34 @@ def pusher_func(request, format=None):
 @permission_classes([IsAuthenticated])
 def pusher_access_new(request, format=None):
     try:
-        user = User.objects.get(username=request.data['username'])
-        pusher = Pusher.objects.get(key=request.data['pusher_key'])
+        username = request.data['username']
+        pusher_key = request.data['pusher_key']
+        request_user = request.user
 
-        # if user access not already in AND requesting user has access to the pusher
-        if (not PusherAccess.objects.filter(user=user, pusher=pusher).exists()) and \
-                PusherAccess.objects.filter(user=request.user, pusher=pusher).exists():
+        if not pusher_exists(pusher_key):
+            return failure_response("The pusher_key " + pusher_key + " is not valid.", status.HTTP_400_BAD_REQUEST)
+        if not user_has_access(request_user, pusher_key):
+            return failure_response("The user " + request_user + " does not have access to the specified pusher.",
+                                    status.HTTP_401_UNAUTHORIZED)
+        if not user_exists(username):
+            return failure_response("The user " + username + " does not exist.", status.HTTP_400_BAD_REQUEST)
+        if user_has_access(username, pusher_key):
+            return failure_response("The user " + username + " already has access to the specified pusher.",
+                                    status.HTTP_400_BAD_REQUEST)
 
-            request.data.update({'user': user.id, 'pusher': pusher.id})
+        new_user = User.objects.get(username=username)
+        pusher = Pusher.objects.get(key=pusher_key)
 
-            # add user access to pusher
-            serializer = PusherAccessSerializer(data=request.data)
-            if serializer.is_valid():
+        request.data.update({'user': new_user.id, 'pusher': pusher.id})
 
-                serializer.save()
-                serializer_data = serializer.data
-                for data in serializer_data:
-                    data['user'] = user.username
-                    data['pusher'] = "[" + pusher.primaryUser.username + "]-" + pusher.name
-                return Response(data=serializer_data)
+        # add user access to pusher
+        serializer = PusherAccessSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(data=serializer.data)
+        return Response(data=serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-            # if bad format
-            return Response(data=serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-        return Response(status=status.HTTP_401_UNAUTHORIZED)
-
-    except (Pusher.DoesNotExist, User.DoesNotExist) as e:  # if bad format
+    except TypeError as e:  # if bad format
         return Response(status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -121,15 +129,8 @@ def pusher_access_all(request, format=None):
     serializer = PusherAccessSerializer(data=pusher_access, many=True)
 
     # TODO return primaryUser
-    if not serializer.is_valid():  # fixme idk why this not valid
-        # serializer.save()
-        serializer_data = serializer.data
-        for data in serializer_data:
-            user = User.objects.get(id=data['user'])
-            pusher = Pusher.objects.get(id=data['pusher'])
-            data['user'] = user.username
-            data['pusher'] = "[" + pusher.primaryUser.username + "]-" + pusher.name
-        return Response(serializer_data)
+    if serializer.is_valid():  # fixme idk why this not valid
+        return Response(serializer.data)
     return Response(data=serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -140,41 +141,46 @@ def pusher_access_all(request, format=None):
 def pusher_access_func(request, format=None):
     # if call is accurate
     try:
-        pusher = Pusher.objects.get(key=request.data['pusher_key'])
+        pusher_key = request.data['pusher_key']
+        request_user = request.user
 
-        # if user has access to the pusher, continue
-        if not PusherAccess.objects.filter(user=request.user, pusher=pusher).exists():
-            return Response(status=status.HTTP_401_UNAUTHORIZED)
+        if not pusher_exists(pusher_key):
+            return failure_response("The pusher_key " + pusher_key + " is not valid.", status.HTTP_400_BAD_REQUEST)
+        if not user_has_access(request_user, pusher_key):
+            return failure_response("The user " + request_user + " does not have access to the specified pusher.",
+                                    status.HTTP_401_UNAUTHORIZED)
+
+        pusher = Pusher.objects.get(key=request.data['pusher_key'])
 
         # getting all users who have access to pusher
         if request.method == 'GET':
             pusher_access = PusherAccess.objects.filter(pusher=pusher)
             serializer = PusherAccessSerializer(data=pusher_access, many=True)
             if not serializer.is_valid():  # fixme idk why this not valid
-                serializer_data = serializer.data
-                for data in serializer_data:
-                    user = User.objects.get(id=data['user'])
-                    pusher = Pusher.objects.get(id=data['pusher'])
-                    data['user'] = user.username
-                    data['pusher'] = "[" + pusher.primaryUser.username + "]-" + pusher.name
-                return Response(serializer_data)
+                return Response(serializer.data)
             return Response(data=serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
         elif request.method == 'DELETE':
-            try:
-                # only delete if requesting user is not primary user of pusher
-                user = User.objects.get(username=request.data['username'])
+            # only delete if requesting user is not primary user of pusher
+            username = request.data['username']
 
-                if pusher.primaryUser == user:
-                    return Response(status=status.HTTP_401_UNAUTHORIZED)
+            if not user_exists(username):
+                return failure_response("The user " + username + " does not exist.", status.HTTP_400_BAD_REQUEST)
+            if user_has_access(username, pusher_key):
+                return failure_response("The user " + username + " already has access to the specified pusher.",
+                                        status.HTTP_400_BAD_REQUEST)
 
-                if user != request.user:
-                    pusher_access = PusherAccess.objects.get(pusher=pusher, user=user)
-                    pusher_access.delete()
-                    return Response(status=status.HTTP_204_NO_CONTENT)
-                return Response(status=status.HTTP_400_BAD_REQUEST)
-            except PusherAccess.DoesNotExist:
-                return Response(status=status.HTTP_400_BAD_REQUEST)
+            user = User.objects.get(username=username)
 
-    except (Pusher.DoesNotExist, User.DoesNotExist, KeyError):
+            if pusher.primaryUser == user:
+                return failure_response("You cannot delete yourself from the pusher since you are the primary user",
+                                        status.HTTP_401_UNAUTHORIZED)
+
+            if user != request.user:
+                pusher_access = PusherAccess.objects.get(pusher=pusher, user=user)
+                pusher_access.delete()
+                return Response(status=status.HTTP_204_NO_CONTENT)
+            return Response(status=status.HTTP_400_BAD_REQUEST)
+
+    except KeyError as e:
         return Response(status=status.HTTP_400_BAD_REQUEST)

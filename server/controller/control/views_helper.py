@@ -18,6 +18,10 @@ def pusher_exists(pusher_name):
     return Pusher.objects.filter(key=pusher_name).exists()
 
 
+def user_exists(username):
+    return User.objects.filter(username=username).exists()
+
+
 def user_has_access(user, pusher):
     return PusherAccess.objects.filter(user=user, pusher=pusher).exists()
 
