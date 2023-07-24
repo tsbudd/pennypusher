@@ -1,13 +1,14 @@
 from django.http import HttpResponse
 
 from .serializers import *
+from .models import *
 from rest_framework.decorators import api_view, permission_classes, authentication_classes
 from rest_framework.authentication import SessionAuthentication, BasicAuthentication
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework import permissions
-from ratelimit.decorators import ratelimit
+from ratelimit import limits
 
 
 def index(request):
@@ -15,7 +16,7 @@ def index(request):
 
 
 # -------------------------------------------- CONNECTION --------------------------------------------
-@ratelimit(key='ip', rate='50/h')
+# @limits(calls=100, period=900)
 @api_view(['GET'])
 @permission_classes([permissions.AllowAny])
 def connect_stat(request, format=None):
@@ -23,7 +24,7 @@ def connect_stat(request, format=None):
 
 
 # -------------------------------------------- USER --------------------------------------------
-@ratelimit(key='ip', rate='100/h')
+# @limits(key='ip', rate='100/h')
 @api_view(['GET'])
 @authentication_classes([SessionAuthentication, BasicAuthentication])
 @permission_classes([permissions.IsAdminUser])
@@ -33,7 +34,7 @@ def user_all(request, format=None):
     return Response(serializer.data)
 
 
-@ratelimit(key='ip', rate='100/h')
+# @limits(key='ip', rate='100/h')
 @api_view(['DELETE'])
 @authentication_classes([SessionAuthentication, BasicAuthentication])
 @permission_classes([permissions.IsAdminUser])
@@ -46,7 +47,7 @@ def user_delete(request, format=None):
         return Response(status=status.HTTP_400_BAD_REQUEST)
 
 
-@ratelimit(key='ip', rate='100/h')
+# @limits(key='ip', rate='100/h')
 @api_view(['POST'])
 @permission_classes([permissions.AllowAny])
 def user_register(request, format=None):
@@ -57,7 +58,7 @@ def user_register(request, format=None):
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-@ratelimit(key='ip', rate='100/h')
+# @limits(key='ip', rate='100/h')
 @api_view(['GET', 'PUT'])
 @authentication_classes([SessionAuthentication, BasicAuthentication])
 @permission_classes([IsAuthenticated])
@@ -80,7 +81,7 @@ def user_info(request, format=None):
 
 
 # -------------------------------------------- PUSHER ------------------------------------------
-@ratelimit(key='ip', rate='100/h')
+# @limits(key='ip', rate='100/h')
 @api_view(['GET'])
 @authentication_classes([SessionAuthentication, BasicAuthentication])
 @permission_classes([IsAuthenticated])
@@ -101,7 +102,7 @@ def generate_key():
             return key
 
 
-@ratelimit(key='ip', rate='100/h')
+# @limits(key='ip', rate='100/h')
 @api_view(['POST'])
 @authentication_classes([SessionAuthentication, BasicAuthentication])
 @permission_classes([IsAuthenticated])
@@ -126,7 +127,7 @@ def pusher_new(request, format=None):
         return Response(status=status.HTTP_400_BAD_REQUEST)
 
 
-@ratelimit(key='ip', rate='100/h')
+# @limits(key='ip', rate='100/h')
 @api_view(['GET', 'PUT', 'DELETE'])
 @authentication_classes([SessionAuthentication, BasicAuthentication])
 @permission_classes([IsAuthenticated])
@@ -157,7 +158,7 @@ def pusher_func(request, format=None):
 
 
 # -------------------------------------------- PUSHER ACCESS ------------------------------------------
-@ratelimit(key='ip', rate='100/h')
+# @limits(key='ip', rate='100/h')
 @api_view(['POST'])
 @authentication_classes([SessionAuthentication, BasicAuthentication])
 @permission_classes([IsAuthenticated])
@@ -192,7 +193,7 @@ def pusher_access_new(request, format=None):
         return Response(status=status.HTTP_400_BAD_REQUEST)
 
 
-@ratelimit(key='ip', rate='100/h')
+# @limits(key='ip', rate='100/h')
 @api_view(['GET'])
 @authentication_classes([SessionAuthentication, BasicAuthentication])
 @permission_classes([IsAuthenticated])
@@ -213,7 +214,7 @@ def pusher_access_all(request, format=None):
     return Response(data=serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-@ratelimit(key='ip', rate='100/h')
+# @limits(key='ip', rate='100/h')
 @api_view(['GET', 'DELETE'])
 @authentication_classes([SessionAuthentication, BasicAuthentication])
 @permission_classes([IsAuthenticated])
@@ -261,12 +262,11 @@ def pusher_access_func(request, format=None):
 
 
 # -------------------------------------------- BUDGET ------------------------------------------
-@ratelimit(key='ip', rate='100/h')
+# @limits(key='ip', rate='100/h')
 @api_view(['POST'])
 @authentication_classes([SessionAuthentication, BasicAuthentication])
 @permission_classes([IsAuthenticated])
-def budget_new(request, format=None):
-
+def entity_new(request, format=None):
     try:
         pusher = Pusher.objects.get(key=request.data['pusher_key'])
 
@@ -295,7 +295,7 @@ def budget_new(request, format=None):
         return Response(status=status.HTTP_400_BAD_REQUEST)
 
 
-@ratelimit(key='ip', rate='100/h')
+# @limits(key='ip', rate='100/h')
 @api_view(['GET', 'PUT', 'DELETE'])
 @authentication_classes([SessionAuthentication, BasicAuthentication])
 @permission_classes([IsAuthenticated])
@@ -342,7 +342,7 @@ def budget_func(request, format=None):
         return Response(status=status.HTTP_400_BAD_REQUEST)
 
 
-@ratelimit(key='ip', rate='100/h')
+# @limits(key='ip', rate='100/h')
 @api_view(['POST'])
 @authentication_classes([SessionAuthentication, BasicAuthentication])
 @permission_classes([IsAuthenticated])
@@ -378,7 +378,7 @@ def budget_value_new(request, format=None):
         return Response(status=status.HTTP_400_BAD_REQUEST)
 
 
-@ratelimit(key='ip', rate='100/h')
+# @limits(key='ip', rate='100/h')
 @api_view(['GET'])
 @authentication_classes([SessionAuthentication, BasicAuthentication])
 @permission_classes([IsAuthenticated])
@@ -411,7 +411,7 @@ def budget_value_all(request, format=None):
 
 
 # -------------------------------------------- FUND ------------------------------------------
-@ratelimit(key='ip', rate='100/h')
+# @limits(key='ip', rate='100/h')
 @api_view(['POST'])
 @authentication_classes([SessionAuthentication, BasicAuthentication])
 @permission_classes([IsAuthenticated])
@@ -443,7 +443,7 @@ def fund_new(request, format=None):
         return Response(status=status.HTTP_400_BAD_REQUEST)
 
 
-@ratelimit(key='ip', rate='100/h')
+# @limits(key='ip', rate='100/h')
 @api_view(['GET', 'PUT', 'DELETE'])
 @authentication_classes([SessionAuthentication, BasicAuthentication])
 @permission_classes([IsAuthenticated])
@@ -490,7 +490,7 @@ def fund_func(request, format=None):
         return Response(status=status.HTTP_400_BAD_REQUEST)
 
 
-@ratelimit(key='ip', rate='100/h')
+# @limits(key='ip', rate='100/h')
 @api_view(['POST'])
 @authentication_classes([SessionAuthentication, BasicAuthentication])
 @permission_classes([IsAuthenticated])
@@ -526,7 +526,7 @@ def fund_value_new(request, format=None):
         return Response(status=status.HTTP_400_BAD_REQUEST)
 
 
-@ratelimit(key='ip', rate='100/h')
+# @limits(key='ip', rate='100/h')
 @api_view(['GET'])
 @authentication_classes([SessionAuthentication, BasicAuthentication])
 @permission_classes([IsAuthenticated])
@@ -557,8 +557,9 @@ def fund_value_all(request, format=None):
     except (Pusher.DoesNotExist, Fund.DoesNotExist, TypeError) as e:
         return Response(status=status.HTTP_406_NOT_ACCEPTABLE)
 
+
 # -------------------------------------------- INCOME ------------------------------------------
-@ratelimit(key='ip', rate='100/h')
+# @limits(key='ip', rate='100/h')
 @api_view(['POST'])
 @authentication_classes([SessionAuthentication, BasicAuthentication])
 @permission_classes([IsAuthenticated])
@@ -594,7 +595,7 @@ def income_new(request, format=None):
         return Response(status=status.HTTP_400_BAD_REQUEST)
 
 
-@ratelimit(key='ip', rate='100/h')
+# @limits(key='ip', rate='100/h')
 @api_view(['GET', 'DELETE'])
 @authentication_classes([SessionAuthentication, BasicAuthentication])
 @permission_classes([IsAuthenticated])
@@ -632,7 +633,7 @@ def income_func(request, format=None):
 
 
 # -------------------------------------------- EXPENSE ------------------------------------------
-@ratelimit(key='ip', rate='100/h')
+# @limits(key='ip', rate='100/h')
 @api_view(['POST'])
 @authentication_classes([SessionAuthentication, BasicAuthentication])
 @permission_classes([IsAuthenticated])
@@ -682,7 +683,7 @@ def expense_new(request, format=None):
         return Response(status=status.HTTP_400_BAD_REQUEST)
 
 
-@ratelimit(key='ip', rate='100/h')
+# @limits(key='ip', rate='100/h')
 @api_view(['GET', 'DELETE'])
 @authentication_classes([SessionAuthentication, BasicAuthentication])
 @permission_classes([IsAuthenticated])
@@ -728,7 +729,7 @@ def expense_func(request, format=None):
 
 
 # -------------------------------------------- PAYCHECK ------------------------------------------
-@ratelimit(key='ip', rate='100/h')
+# @limits(key='ip', rate='100/h')
 @api_view(['POST'])
 @authentication_classes([SessionAuthentication, BasicAuthentication])
 @permission_classes([IsAuthenticated])
@@ -764,7 +765,7 @@ def paycheck_new(request, format=None):
         return Response(status=status.HTTP_400_BAD_REQUEST)
 
 
-@ratelimit(key='ip', rate='100/h')
+# @limits(key='ip', rate='100/h')
 @api_view(['GET', 'DELETE'])
 @authentication_classes([SessionAuthentication, BasicAuthentication])
 @permission_classes([IsAuthenticated])
@@ -803,7 +804,7 @@ def paycheck_func(request, format=None):
 
 
 # -------------------------------------------- PAYCHECK ------------------------------------------
-@ratelimit(key='ip', rate='100/h')
+# @limits(key='ip', rate='100/h')
 @api_view(['POST'])
 @authentication_classes([SessionAuthentication, BasicAuthentication])
 @permission_classes([IsAuthenticated])
@@ -835,7 +836,7 @@ def profit_new(request, format=None):
         return Response(status=status.HTTP_400_BAD_REQUEST)
 
 
-@ratelimit(key='ip', rate='100/h')
+# @limits(key='ip', rate='100/h')
 @api_view(['GET'])
 @authentication_classes([SessionAuthentication, BasicAuthentication])
 @permission_classes([IsAuthenticated])
@@ -864,7 +865,7 @@ def profit_all(request, format=None):
 
 
 # -------------------------------------------- ACCOUNT -----------------------------------------
-@ratelimit(key='ip', rate='100/h')
+# @limits(key='ip', rate='100/h')
 @api_view(['POST'])
 @authentication_classes([SessionAuthentication, BasicAuthentication])
 @permission_classes([IsAuthenticated])
@@ -899,7 +900,7 @@ def account_new(request, format=None):
         return Response(status=status.HTTP_400_BAD_REQUEST)
 
 
-@ratelimit(key='ip', rate='100/h')
+# @limits(key='ip', rate='100/h')
 @api_view(['GET', 'DELETE'])
 @authentication_classes([SessionAuthentication, BasicAuthentication])
 @permission_classes([IsAuthenticated])
@@ -933,7 +934,7 @@ def account_func(request, format=None):
         return Response(status=status.HTTP_400_BAD_REQUEST)
 
 
-@ratelimit(key='ip', rate='100/h')
+# @limits(key='ip', rate='100/h')
 @api_view(['POST'])
 @authentication_classes([SessionAuthentication, BasicAuthentication])
 @permission_classes([IsAuthenticated])
@@ -968,7 +969,7 @@ def account_value_new(request, format=None):
         return Response(status=status.HTTP_400_BAD_REQUEST)
 
 
-@ratelimit(key='ip', rate='100/h')
+# @limits(key='ip', rate='100/h')
 @api_view(['GET'])
 @authentication_classes([SessionAuthentication, BasicAuthentication])
 @permission_classes([IsAuthenticated])
@@ -1001,7 +1002,7 @@ def account_value_all(request, format=None):
 
 
 # -------------------------------------------- EXPENDABLE NET WORTH -----------------------------------------
-@ratelimit(key='ip', rate='100/h')
+# @limits(key='ip', rate='100/h')
 @api_view(['POST'])
 @authentication_classes([SessionAuthentication, BasicAuthentication])
 @permission_classes([IsAuthenticated])
@@ -1033,7 +1034,7 @@ def exp_net_worth_new(request, format=None):
         return Response(status=status.HTTP_400_BAD_REQUEST)
 
 
-@ratelimit(key='ip', rate='100/h')
+# @limits(key='ip', rate='100/h')
 @api_view(['GET', 'DELETE'])
 @authentication_classes([SessionAuthentication, BasicAuthentication])
 @permission_classes([IsAuthenticated])
