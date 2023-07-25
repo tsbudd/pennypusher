@@ -1,4 +1,6 @@
-from server.controller.control.views_helper import *
+from rest_framework.exceptions import ValidationError
+
+from .views_helper import *
 from rest_framework.decorators import api_view, permission_classes, authentication_classes
 from rest_framework.authentication import SessionAuthentication, BasicAuthentication
 from rest_framework.permissions import IsAuthenticated
@@ -25,17 +27,17 @@ def encapsulation_new(request, format=None):
 
         if not pusher_exists(pusher_key):
             return failure_response("The pusher_key " + pusher_key + " is not valid.", status.HTTP_400_BAD_REQUEST)
-        if not user_has_access(user, request.data['pusher_key']):
+        pusher = Pusher.objects.get(key=request.data['pusher_key'])
+        if not user_has_access(user, pusher):
             return failure_response("The user " + user + " does not have access to the pusher.",
                                     status.HTTP_401_UNAUTHORIZED)
         if not encapsulation_type_exists(encapsulation_type):
             return failure_response("The type " + encapsulation_type + " is not allowed.", status.HTTP_400_BAD_REQUEST)
 
-        encapsulation_name = request.data['encapsulation_name']
-        pusher = Pusher.objects.get(key=request.data['pusher_key'])
+        name = request.data['encapsulation_name']
 
-        if encapsulation_exists(encapsulation_type, encapsulation_name, pusher):
-            return failure_response("The " + encapsulation_type + " [" + encapsulation_name + "] already exists.",
+        if encapsulation_exists(encapsulation_type, name, pusher):
+            return failure_response("The " + encapsulation_type + " [" + name + "] already exists.",
                                     status.HTTP_400_BAD_REQUEST)
 
         # retrieving the pusher and other data
@@ -43,15 +45,22 @@ def encapsulation_new(request, format=None):
         request_data.update({'pusher': pusher.id})
         request_data.update({'user': user.id})
 
+        # Get the serializer for the specified encapsulation_type
         serializer = get_serializer(encapsulation_type, request_data, False)
-        if serializer.is_valid():
+        if serializer:
+            try:
+                serializer.is_valid(raise_exception=True)  # Raise a ValidationError on invalid data
+            except ValidationError as e:
+                return Response(data=e.detail, status=status.HTTP_400_BAD_REQUEST)
+
             serializer.save()
             serializer_data = serializer.data
             return Response(data=serializer_data)
         else:
-            return Response(data=serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    except KeyError as e:
-        return Response(status=status.HTTP_400_BAD_REQUEST)
+            return failure_response("Invalid encapsulation_type: " + encapsulation_type,
+                                    status.HTTP_400_BAD_REQUEST)
+    except TypeError as e:
+        return Response(status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 # @limits(key='ip', rate='100/h')
@@ -67,23 +76,29 @@ def encapsulation_func(request, format=None):
 
         if not pusher_exists(pusher_key):
             return failure_response("The pusher_key " + pusher_key + " is not valid.", status.HTTP_400_BAD_REQUEST)
-        if not user_has_access(user, request.data['pusher_key']):
+
+        pusher = Pusher.objects.get(key=pusher_key)
+        if not user_has_access(user, pusher):
             return failure_response("The user " + user + " does not have access to the pusher.",
                                     status.HTTP_401_UNAUTHORIZED)
         if not entity_type_exists(encapsulation_type):
-            return failure_response("The type " + encapsulation_type + " is not allowed.", status.HTTP_400_BAD_REQUEST)
+            return failure_response("The type [" + encapsulation_type + "] is not allowed.", status.HTTP_400_BAD_REQUEST)
 
         if request.method == 'GET':
-            pusher = Pusher.objects.get(key=request.data['pusher_key'])
-
             # get all data
             entity_data = get_entity_list(encapsulation_type, pusher)
             serializer = get_serializer(encapsulation_type, entity_data, True)
+            if serializer:
+                try:
+                    serializer.is_valid(raise_exception=True)  # Raise a ValidationError on invalid data
+                except ValidationError as e:
+                    return Response(data=e.detail, status=status.HTTP_400_BAD_REQUEST)
 
-            if serializer.is_valid():
-                return Response(data=serializer.data)
+                serializer_data = serializer.data
+                return Response(data=serializer_data)
             else:
-                return Response(data=serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+                return failure_response("Invalid encapsulation_type: " + encapsulation_type,
+                                        status.HTTP_400_BAD_REQUEST)
 
         elif request.method == 'PUT':
             encapsulation_id = request.data['encapsulation_id']
@@ -103,7 +118,7 @@ def encapsulation_func(request, format=None):
             encapsulation.delete()
             return Response(status=status.HTTP_204_NO_CONTENT)
 
-    except (Pusher.DoesNotExist, Budget.DoesNotExist, KeyError) as e:
+    except User.DoesNotExist as e:
         return Response(status=status.HTTP_400_BAD_REQUEST)
 
 

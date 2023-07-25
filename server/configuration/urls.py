@@ -1,7 +1,8 @@
-"""configuration URL Configuration
+"""
+URL configuration for configuration project.
 
 The `urlpatterns` list routes URLs to views. For more information please see:
-    https://docs.djangoproject.com/en/4.1/topics/http/urls/
+    https://docs.djangoproject.com/en/4.2/topics/http/urls/
 Examples:
 Function views
     1. Add an import:  from my_app import views
@@ -17,11 +18,11 @@ from django.contrib import admin
 from django.urls import path
 from rest_framework.urlpatterns import format_suffix_patterns
 
-from server.controller.control import views
-from server.controller.control import pusher_controller
-from server.controller.control import user_controller
-from server.controller.control import encapsulation_controller
-from server.controller.control import entity_controller
+from controller.control import views
+from controller.control import pusher_controller
+from controller.control import user_controller
+from controller.control import encapsulation_controller
+from controller.control import entity_controller
 
 urlpatterns = [
     path('', views.index, name='home'),
@@ -29,17 +30,18 @@ urlpatterns = [
 
     # api calls
     # admin
-    path('allUsers/', user_controller.user_all),
+    path('users/all/', user_controller.user_all),
     path('user/delete/', user_controller.user_delete),
 
     # user control
-    path('register/', user_controller.user_register),
+    path('user/register/', user_controller.user_register),
     path('user/details/', user_controller.user_info),
+    path('user/modify/', user_controller.user_info),
 
     # pusher and pusher access
-    path('pusher/', pusher_controller.pusher_func),
-    path('pusher/new/', pusher_controller.pusher_new),
     path('pusher/all/', pusher_controller.pusher_all),
+    path('pusher/new/', pusher_controller.pusher_new),
+    path('pusher/', pusher_controller.pusher_func),
     path('pusher/access/new', pusher_controller.pusher_access_new),
     path('pusher/access/all/', pusher_controller.pusher_access_all),
     path('pusher/access/', pusher_controller.pusher_access_func),

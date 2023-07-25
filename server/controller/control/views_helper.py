@@ -1,5 +1,5 @@
 from rest_framework.response import Response
-from server.controller.serializers import *
+from controller.serializers import *
 
 
 def generate_key():
@@ -27,7 +27,8 @@ def user_has_access(user, pusher):
 
 
 def entity_type_exists(entity_type):
-    allowed_types = ['income', 'expense', 'paycheck', 'profit', 'bills', 'subscription', 'for_sale']
+    allowed_types = ['income', 'expense', 'paycheck', 'profit', 'bills', 'subscription', 'for_sale',
+                     'budget', 'fund', 'account']
     return entity_type in allowed_types
 
 
@@ -44,6 +45,14 @@ def get_serializer(entity_type, data, many):
             return ExpenseSerializer(data=data, many=many)
         case 'paycheck':
             return PaycheckSerializer(data=data, many=many)
+        case 'budget':
+            return BudgetSerializer(data=data, many=many)
+        case 'fund':
+            return FundSerializer(data=data, many=many)
+        case 'budget_value':
+            return BudgetValueSerializer(data=data, many=many)
+        case 'fund_value':
+            return FundValueSerializer(data=data, many=many)
         # case 'bills':
         #     return BillSerializer
         # case 'subscription':
@@ -60,6 +69,14 @@ def get_entity_list(entity_type, pusher):
             return Expense.objects.get(pusher=pusher)
         case 'paycheck':
             return Paycheck.objects.get(pusher=pusher)
+        case 'budget':
+            return Budget.objects.get(pusher=pusher)
+        case 'fund':
+            return Fund.objects.get(pusher=pusher)
+        case 'budget_value':
+            return BudgetValue.objects.get(pusher=pusher)
+        case 'fund_value':
+            return FundValue.objects.get(pusher=pusher)
 
 
 def get_entity(entity_type, entity_id):

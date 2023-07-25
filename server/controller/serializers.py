@@ -27,9 +27,13 @@ class UserSerializer(serializers.ModelSerializer):
         write_only_fields = ['password', ]
 
 
-class PusherSerializer(serializers.ModelSerializer):
-    primaryUser = serializers.SerializerMethodField()
+def get_primaryUser(obj):
+    # 'obj.primaryUser' is the User instance, so you can access its 'username' directly
+    return obj.primaryUser.username
 
+
+class PusherSerializer(serializers.ModelSerializer):
+    username = serializers.SerializerMethodField(read_only=True)
     def create(self, validated_data):
         pusher = Pusher.objects.create(
             primaryUser=validated_data['primaryUser'],
@@ -46,17 +50,22 @@ class PusherSerializer(serializers.ModelSerializer):
 
         return pusher
 
+    def get_primaryUser(self, obj):
+        return obj.primaryUser_id
+
+    def get_username(self, obj):
+        return obj.primaryUser.username
+
     class Meta:
         model = Pusher
-        fields = ['name', 'key', 'primaryUser', ]
-        read_only = ['key']
-
-    def get_primaryUser(self, obj):
-        user = User.objects.get(id=obj.primaryUser.id)
-        return user.username
+        fields = ['name', 'key', 'primaryUser', 'username']  # Remove 'primaryUser' from 'fields'
+        write_only_fields = ['primaryUser']
 
 
 class PusherAccessSerializer(serializers.ModelSerializer):
+    username = serializers.SerializerMethodField(read_only=True)
+    pusher_name = serializers.SerializerMethodField(read_only=True)
+
     def create(self, validated_data):
         pusher_access = PusherAccess.objects.create(
             user=validated_data['user'],
@@ -65,12 +74,20 @@ class PusherAccessSerializer(serializers.ModelSerializer):
         pusher_access.save()
         return pusher_access
 
+    def get_pusher_name(self, obj):
+        return obj.pusher.name
+
+    def get_username(self, obj):
+        return obj.user.username
+
     class Meta:
         model = PusherAccess
-        fields = ['user', 'pusher', 'access_time']
+        fields = ['user', 'pusher', 'access_time', 'username', 'pusher_name']
+        write_only_fields = ['user', 'pusher']
 
 
 class BudgetSerializer(serializers.ModelSerializer):
+    pusher_name = serializers.SerializerMethodField(read_only=True)
     def create(self, validated_data):
         budget = Budget.objects.create(
             pusher=validated_data['pusher'],
@@ -84,10 +101,13 @@ class BudgetSerializer(serializers.ModelSerializer):
         budget.save()
         return budget
 
+    def get_pusher_name(self, obj):
+        return obj.pusher.name
+
     class Meta:
         model = Budget
         fields = ['name', 'alloc_amt', 'priority',
-                  'pay_period', 'pay_start', 'category', 'pusher']
+                  'pay_period', 'pay_start', 'category', 'pusher', 'pusher_key']
 
 
 class FundSerializer(serializers.ModelSerializer):
@@ -215,20 +235,6 @@ class PaycheckSerializer(serializers.ModelSerializer):
         fields = ['user', 'pusher', 'company_name', 'hours', 'start_date',
                   'end_date', 'pay_date', 'gross_amt', 'pre_tax_deduc', 'post_tax_deduc',
                   'federal_with', 'state_tax', 'city_tax', 'medicare', 'oasdi', 'net_amt']
-
-
-class ProfitSerializer(serializers.ModelSerializer):
-    def create(self, validated_data):
-        profit = Profit.objects.create(
-            pusher=validated_data['pusher'],
-            amount=validated_data['amount'],
-        )
-        profit.save()
-        return profit
-
-    class Meta:
-        model = Profit
-        fields = ['pusher', 'amount', 'timestamp']
 
 
 class AccountSerializer(serializers.ModelSerializer):
