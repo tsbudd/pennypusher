@@ -49,10 +49,14 @@ def get_serializer(entity_type, data, many):
             return BudgetSerializer(data=data, many=many)
         case 'fund':
             return FundSerializer(data=data, many=many)
+        case 'account':
+            return AccountSerializer(data=data, many=many)
         case 'budget_value':
             return BudgetValueSerializer(data=data, many=many)
         case 'fund_value':
             return FundValueSerializer(data=data, many=many)
+        case 'account_value':
+            return AccountValueSerializer(data=data, many=many)
         # case 'bills':
         #     return BillSerializer
         # case 'subscription':
@@ -64,19 +68,33 @@ def get_serializer(entity_type, data, many):
 def get_entity_list(entity_type, pusher):
     match entity_type:
         case 'income':
-            return Income.objects.get(pusher=pusher)
+            return Income.objects.filter(pusher=pusher)
         case 'expense':
-            return Expense.objects.get(pusher=pusher)
+            return Expense.objects.filter(pusher=pusher)
         case 'paycheck':
-            return Paycheck.objects.get(pusher=pusher)
+            return Paycheck.objects.filter(pusher=pusher)
         case 'budget':
-            return Budget.objects.get(pusher=pusher)
+            return Budget.objects.filter(pusher=pusher)
         case 'fund':
-            return Fund.objects.get(pusher=pusher)
+            return Fund.objects.filter(pusher=pusher)
+        case 'account':
+            return Account.objects.filter(pusher=pusher)
         case 'budget_value':
-            return BudgetValue.objects.get(pusher=pusher)
+            return BudgetValue.objects.filter(pusher=pusher)
         case 'fund_value':
-            return FundValue.objects.get(pusher=pusher)
+            return FundValue.objects.filter(pusher=pusher)
+        case 'fund_value':
+            return AccountValue.objects.filter(pusher=pusher)
+
+
+def get_encapsulation(encapsulation_type, encapsulation_name):
+    match encapsulation_type:
+        case 'budget':
+            return Budget.objects.get(name=encapsulation_name)
+        case 'fund':
+            return Fund.objects.get(name=encapsulation_name)
+        case 'account':
+            return Account.objects.get(name=encapsulation_name)
 
 
 def get_entity(entity_type, entity_id):

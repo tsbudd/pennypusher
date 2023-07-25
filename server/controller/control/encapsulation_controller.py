@@ -42,20 +42,15 @@ def encapsulation_new(request, format=None):
 
         # retrieving the pusher and other data
         request_data = request.data['data']
+        request_data.update({'name': name})
         request_data.update({'pusher': pusher.id})
         request_data.update({'user': user.id})
 
         # Get the serializer for the specified encapsulation_type
         serializer = get_serializer(encapsulation_type, request_data, False)
-        if serializer:
-            try:
-                serializer.is_valid(raise_exception=True)  # Raise a ValidationError on invalid data
-            except ValidationError as e:
-                return Response(data=e.detail, status=status.HTTP_400_BAD_REQUEST)
-
+        if serializer.is_valid():
             serializer.save()
-            serializer_data = serializer.data
-            return Response(data=serializer_data)
+            return Response(data=serializer.data)
         else:
             return failure_response("Invalid encapsulation_type: " + encapsulation_type,
                                     status.HTTP_400_BAD_REQUEST)
@@ -70,8 +65,12 @@ def encapsulation_new(request, format=None):
 def encapsulation_func(request, format=None):
     # if call is accurate
     try:
-        pusher_key = request.GET.get('pusher_key')
-        encapsulation_type = request.GET.get('encapsulation_type')
+        if request.method == 'GET' or request.method == 'DELETE':
+            pusher_key = request.GET.get('pusher_key')
+            encapsulation_type = request.GET.get('encapsulation_type')
+        else:
+            pusher_key = request.data['pusher_key']
+            encapsulation_type = request.data['encapsulation_type']
         user = request.user
 
         if not pusher_exists(pusher_key):
@@ -88,12 +87,7 @@ def encapsulation_func(request, format=None):
             # get all data
             entity_data = get_entity_list(encapsulation_type, pusher)
             serializer = get_serializer(encapsulation_type, entity_data, True)
-            if serializer:
-                try:
-                    serializer.is_valid(raise_exception=True)  # Raise a ValidationError on invalid data
-                except ValidationError as e:
-                    return Response(data=e.detail, status=status.HTTP_400_BAD_REQUEST)
-
+            if not serializer.is_valid():
                 serializer_data = serializer.data
                 return Response(data=serializer_data)
             else:
@@ -101,20 +95,28 @@ def encapsulation_func(request, format=None):
                                         status.HTTP_400_BAD_REQUEST)
 
         elif request.method == 'PUT':
-            encapsulation_id = request.data['encapsulation_id']
-            encapsulation = get_entity(encapsulation_type, encapsulation_id)
-            request.data.update({'id': encapsulation.id})
-            serializer = get_serializer(encapsulation_type, encapsulation, False)
+            encapsulation_name = request.data['encapsulation_name']
+            if not encapsulation_exists(encapsulation_type, encapsulation_name, pusher):
+                return failure_response("The "+encapsulation_type+" [" + encapsulation_name + "] does not exist.",
+                                        status.HTTP_400_BAD_REQUEST)
+
+            encapsulation = get_encapsulation(encapsulation_type, encapsulation_name)
+            request_data = request.data['data']
+            request_data.update({'name': encapsulation_name})
+            request_data.update({'pusher': pusher.id})
+            serializer = get_serializer(encapsulation_type, request_data, False)
             if serializer.is_valid():
-                # delete old, replace with new
                 encapsulation.delete()
                 serializer.save()
                 return Response(serializer.data)
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
         elif request.method == 'DELETE':
-            encapsulation_id = request.GET.get('encapsulation_id')
-            encapsulation = get_entity(encapsulation_type, encapsulation_id)
+            encapsulation_name = request.GET.get('encapsulation_name')
+            if not encapsulation_exists(encapsulation_type, encapsulation_name, pusher):
+                return failure_response("The " + encapsulation_type + " [" + encapsulation_name + "] does not exist.",
+                                        status.HTTP_400_BAD_REQUEST)
+            encapsulation = get_encapsulation(encapsulation_type, encapsulation_name)
             encapsulation.delete()
             return Response(status=status.HTTP_204_NO_CONTENT)
 
