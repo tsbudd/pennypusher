@@ -27,11 +27,6 @@ class UserSerializer(serializers.ModelSerializer):
         write_only_fields = ['password', ]
 
 
-def get_primaryUser(obj):
-    # 'obj.primaryUser' is the User instance, so you can access its 'username' directly
-    return obj.primaryUser.username
-
-
 class PusherSerializer(serializers.ModelSerializer):
     username = serializers.SerializerMethodField(read_only=True)
 
@@ -170,6 +165,10 @@ class BudgetValueSerializer(serializers.ModelSerializer):
 
 
 class FundValueSerializer(serializers.ModelSerializer):
+    fund_name = serializers.SerializerMethodField(read_only=True)
+    pusher_name = serializers.SerializerMethodField(read_only=True)
+    pusher_key = serializers.SerializerMethodField(read_only=True)
+
     def create(self, validated_data):
         fund_value = FundValue.objects.create(
             fund=validated_data['fund'],
@@ -178,9 +177,18 @@ class FundValueSerializer(serializers.ModelSerializer):
         fund_value.save()
         return fund_value
 
+    def get_pusher_name(self, obj):
+        return obj.fund.pusher.name
+
+    def get_pusher_key(self, obj):
+        return obj.fund.pusher.key
+
+    def get_fund_name(self, obj):
+        return obj.fund.name
+
     class Meta:
         model = FundValue
-        fields = ['fund', 'value', 'timestamp']
+        fields = ['fund', 'value', 'timestamp', 'fund_name', 'pusher_key', 'pusher_name']
 
 
 class AccountSerializer(serializers.ModelSerializer):
@@ -209,6 +217,10 @@ class AccountSerializer(serializers.ModelSerializer):
 
 
 class AccountValueSerializer(serializers.ModelSerializer):
+    account_name = serializers.SerializerMethodField(read_only=True)
+    pusher_name = serializers.SerializerMethodField(read_only=True)
+    pusher_key = serializers.SerializerMethodField(read_only=True)
+
     def create(self, validated_data):
         acct_value = AccountValue.objects.create(
             account=validated_data['account'],
@@ -217,9 +229,19 @@ class AccountValueSerializer(serializers.ModelSerializer):
         acct_value.save()
         return acct_value
 
+
+    def get_pusher_name(self, obj):
+        return obj.account.pusher.name
+
+    def get_pusher_key(self, obj):
+        return obj.account.pusher.key
+
+    def get_account_name(self, obj):
+        return obj.account.name
+
     class Meta:
         model = AccountValue
-        fields = ['account', 'value', 'timestamp']
+        fields = ['account', 'value', 'timestamp', 'account_name', 'pusher_key', 'pusher_name']
 
 
 class PaycheckSerializer(serializers.ModelSerializer):
