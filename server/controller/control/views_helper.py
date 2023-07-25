@@ -87,6 +87,16 @@ def get_entity_list(entity_type, pusher):
             return AccountValue.objects.filter(pusher=pusher)
 
 
+def get_encapsulation_value_list(encapsulation_type, encapsulation_id):
+    match encapsulation_type:
+        case 'budget':
+            return BudgetValue.objects.filter(budget=encapsulation_id)
+        case 'fund':
+            return FundValue.objects.filter(fund=encapsulation_id)
+        case 'account':
+            return AccountValue.objects.filter(account=encapsulation_id)
+
+
 def get_encapsulation(encapsulation_type, encapsulation_name):
     match encapsulation_type:
         case 'budget':
@@ -95,6 +105,16 @@ def get_encapsulation(encapsulation_type, encapsulation_name):
             return Fund.objects.get(name=encapsulation_name)
         case 'account':
             return Account.objects.get(name=encapsulation_name)
+
+
+def get_encapsulation_value(encapsulation_type, encapsulation_id, timestamp):
+    match encapsulation_type:
+        case 'budget':
+            return BudgetValue.objects.get(budget=encapsulation_id, timestamp=timestamp)
+        case 'fund':
+            return FundValue.objects.get(fund=encapsulation_id, timestamp=timestamp)
+        case 'account':
+            return AccountValue.objects.get(account=encapsulation_id, timestamp=timestamp)
 
 
 def get_entity(entity_type, entity_id):
@@ -110,7 +130,16 @@ def get_entity(entity_type, entity_id):
 def encapsulation_exists(entity_type, entity_name, pusher):
     if entity_type == 'budget':
         return Budget.objects.filter(pusher=pusher, name=entity_name).exists()
-    if entity_type == 'fund':
+    elif entity_type == 'fund':
         return Fund.objects.filter(pusher=pusher, name=entity_name).exists()
-    if entity_type == 'account':
+    elif entity_type == 'account':
         return Account.objects.filter(pusher=pusher, name=entity_name).exists()
+
+
+def encapsulation_value_exists(encapsulation_type, encapsulation_id, timestamp):
+    if encapsulation_type == 'budget':
+        return BudgetValue.objects.filter(budget=encapsulation_id, timestamp=timestamp).exists()
+    elif encapsulation_type == 'fund':
+        return FundValue.objects.filter(fund=encapsulation_id, timestamp=timestamp).exists()
+    elif encapsulation_type == 'account':
+        return AccountValue.objects.filter(account=encapsulation_id, timestamp=timestamp).exists()

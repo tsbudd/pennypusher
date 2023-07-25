@@ -143,6 +143,10 @@ class FundSerializer(serializers.ModelSerializer):
 
 
 class BudgetValueSerializer(serializers.ModelSerializer):
+    budget_name = serializers.SerializerMethodField(read_only=True)
+    pusher_name = serializers.SerializerMethodField(read_only=True)
+    pusher_key = serializers.SerializerMethodField(read_only=True)
+
     def create(self, validated_data):
         budget_value = BudgetValue.objects.create(
             budget=validated_data['budget'],
@@ -151,9 +155,18 @@ class BudgetValueSerializer(serializers.ModelSerializer):
         budget_value.save()
         return budget_value
 
+    def get_pusher_name(self, obj):
+        return obj.budget.pusher.name
+
+    def get_pusher_key(self, obj):
+        return obj.budget.pusher.key
+
+    def get_budget_name(self, obj):
+        return obj.budget.name
+
     class Meta:
         model = BudgetValue
-        fields = ['budget', 'value', 'timestamp']
+        fields = ['budget', 'value', 'timestamp', 'budget_name', 'pusher_key', 'pusher_name']
 
 
 class FundValueSerializer(serializers.ModelSerializer):

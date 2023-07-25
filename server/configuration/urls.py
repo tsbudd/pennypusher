@@ -49,7 +49,7 @@ urlpatterns = [
     # Budgets, Funds, Accounts
     path('encapsulation/new/', encapsulation_controller.encapsulation_new),
     path('encapsulation/', encapsulation_controller.encapsulation_func),
-    path('encapsulation/value/new', encapsulation_controller.encapsulation_value_new),
+    path('encapsulation/value/new/', encapsulation_controller.encapsulation_value_new),
     path('encapsulation/value/', encapsulation_controller.encapsulation_value_func),
 
     # Entities
