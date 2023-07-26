@@ -10,21 +10,24 @@ from rest_framework import status, permissions
 # @limits(key='ip', rate='100/h')
 @api_view(['GET'])
 @authentication_classes([SessionAuthentication, BasicAuthentication])
-@permission_classes([permissions.IsAdminUser])
+@permission_classes([IsAuthenticated])
 def pusher_all(request, format=None):
-    data = Pusher.objects.filter(primaryUser=request.user)
-    serializer = PusherSerializer(data=data, many=True)
+    try:
+        data = Pusher.objects.filter(primaryUser=request.user)
+        serializer = PusherSerializer(data=data, many=True)
 
-    if not serializer.is_valid():
-        return Response(serializer.data, status=status.HTTP_200_OK)
-    else:
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        if not serializer.is_valid():
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    except TypeError as e:
+        return Response(status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 # @limits(key='ip', rate='100/h')
 @api_view(['POST'])
 @authentication_classes([SessionAuthentication, BasicAuthentication])
-@permission_classes([IsAuthenticated])
+@permission_classes([permissions.IsAuthenticated])
 def pusher_new(request, format=None):
     try:
         user = request.user
@@ -44,7 +47,7 @@ def pusher_new(request, format=None):
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    except {TypeError, KeyError} as e:
+    except (TypeError, KeyError) as e:
         return failure_response("System Error", status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
