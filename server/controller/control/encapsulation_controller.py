@@ -24,7 +24,7 @@ class ResponsePagination(PageNumberPagination):
 def encapsulation_new(request, format=None):
     try:
         pusher_key = request.data['pusher_key']
-        encapsulation_type = request.data['encapsulation_type']
+        encapsulation_type = request.data['type']
         user = request.user
 
         if not pusher_exists(pusher_key):
@@ -36,7 +36,7 @@ def encapsulation_new(request, format=None):
         if not encapsulation_type_exists(encapsulation_type):
             return failure_response("The type " + encapsulation_type + " is not allowed.", status.HTTP_400_BAD_REQUEST)
 
-        name = request.data['encapsulation_name']
+        name = request.data['name']
 
         if encapsulation_exists(encapsulation_type, name, pusher):
             return failure_response("The " + encapsulation_type + " [" + name + "] already exists.",
@@ -69,10 +69,10 @@ def encapsulation_func(request, format=None):
     try:
         if request.method == 'GET' or request.method == 'DELETE':
             pusher_key = request.GET.get('pusher_key')
-            encapsulation_type = request.GET.get('encapsulation_type')
+            encapsulation_type = request.GET.get('type')
         else:
             pusher_key = request.data['pusher_key']
-            encapsulation_type = request.data['encapsulation_type']
+            encapsulation_type = request.data['type']
         user = request.user
 
         if not pusher_exists(pusher_key):
@@ -97,7 +97,7 @@ def encapsulation_func(request, format=None):
                                         status.HTTP_400_BAD_REQUEST)
 
         elif request.method == 'PUT':
-            encapsulation_name = request.data['encapsulation_name']
+            encapsulation_name = request.data['name']
             if not encapsulation_exists(encapsulation_type, encapsulation_name, pusher):
                 return failure_response("The "+encapsulation_type+" [" + encapsulation_name + "] does not exist.",
                                         status.HTTP_400_BAD_REQUEST)
@@ -114,7 +114,7 @@ def encapsulation_func(request, format=None):
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
         elif request.method == 'DELETE':
-            encapsulation_name = request.GET.get('encapsulation_name')
+            encapsulation_name = request.GET.get('name')
             if not encapsulation_exists(encapsulation_type, encapsulation_name, pusher):
                 return failure_response("The " + encapsulation_type + " [" + encapsulation_name + "] does not exist.",
                                         status.HTTP_400_BAD_REQUEST)
@@ -133,7 +133,7 @@ def encapsulation_func(request, format=None):
 def encapsulation_value_new(request, format=None):
     try:
         pusher_key = request.data['pusher_key']
-        encapsulation_type = request.data['encapsulation_type']
+        encapsulation_type = request.data['type']
         user = request.user
 
         if not pusher_exists(pusher_key):
@@ -145,7 +145,7 @@ def encapsulation_value_new(request, format=None):
         if not encapsulation_type_exists(encapsulation_type):
             return failure_response("The type " + encapsulation_type + " is not allowed.", status.HTTP_400_BAD_REQUEST)
 
-        encapsulation_name = request.data['encapsulation_name']
+        encapsulation_name = request.data['name']
 
         if not encapsulation_exists(encapsulation_type, encapsulation_name, pusher):
             return failure_response("The " + encapsulation_type + " [" + encapsulation_name + "] does not exist.",
@@ -176,7 +176,7 @@ def encapsulation_value_new(request, format=None):
 def encapsulation_value_func(request, format=None):
     try:
         pusher_key = request.GET.get('pusher_key')
-        encapsulation_type = request.GET.get('encapsulation_type')
+        encapsulation_type = request.GET.get('type')
         user = request.user
 
         if not pusher_exists(pusher_key):
@@ -188,7 +188,7 @@ def encapsulation_value_func(request, format=None):
         if not encapsulation_type_exists(encapsulation_type):
             return failure_response("The type " + encapsulation_type + " is not allowed.", status.HTTP_400_BAD_REQUEST)
 
-        encapsulation_name = request.GET.get('encapsulation_name')
+        encapsulation_name = request.GET.get('name')
         if not encapsulation_exists(encapsulation_type, encapsulation_name, pusher):
             return failure_response("The " + encapsulation_type + " [" + encapsulation_name + "] does not exist.",
                                     status.HTTP_400_BAD_REQUEST)
@@ -211,11 +211,8 @@ def encapsulation_value_func(request, format=None):
                 return Response(data=serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
         elif request.method == 'DELETE':
-            encapsulation_timestamp = request.GET.get('encapsulation_value_timestamp')
-            if encapsulation_type == 'account':
-                date_object = datetime.fromisoformat(encapsulation_timestamp[:-1])
-            else:
-                date_object = datetime.strptime(encapsulation_timestamp, '%Y-%m-%d').date()
+            encapsulation_timestamp = request.GET.get('value_timestamp')
+            date_object = datetime.fromisoformat(encapsulation_timestamp[:-1])
             if not encapsulation_value_exists(encapsulation_type, encapsulation.id, date_object):
                 return failure_response("The " + encapsulation_type + " value at  [" + encapsulation_timestamp +
                                         "] does not exist.", status.HTTP_400_BAD_REQUEST)

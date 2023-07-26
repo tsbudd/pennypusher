@@ -38,7 +38,7 @@ class Budget(models.Model):
 class BudgetValue(models.Model):
     budget = models.ForeignKey(Budget, on_delete=models.CASCADE)
     value = models.DecimalField(max_digits=6, decimal_places=2, default=0.00)
-    timestamp = models.DateField(auto_now_add=True)
+    timestamp = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return "%d VALUE: %.2f -> BUDGET: %s -> %s -> USER: %s" % (self.id, float(self.value), self.budget.name,
@@ -60,7 +60,7 @@ class Fund(models.Model):
 class FundValue(models.Model):
     fund = models.ForeignKey(Fund, on_delete=models.CASCADE)
     value = models.DecimalField(max_digits=9, decimal_places=2, default=0.00)
-    timestamp = models.DateField(auto_now_add=True)
+    timestamp = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return "%d VALUE: %.2f -> FUND: %s -> PUSHER: %s -> USER: %s" % (self.id, float(self.value), self.fund.name,

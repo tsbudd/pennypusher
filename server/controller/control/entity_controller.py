@@ -1,5 +1,3 @@
-from datetime import datetime
-
 from django.http import HttpResponse
 from rest_framework.pagination import PageNumberPagination
 from .views_helper import *
@@ -26,7 +24,7 @@ def index(request):
 def entity_new(request, format=None):
     try:
         pusher_key = request.data['pusher_key']
-        entity_type = request.data['entity_type']
+        entity_type = request.data['type']
         user = request.user
 
         if not pusher_exists(pusher_key):
@@ -66,7 +64,7 @@ def entity_func(request, format=None):
     # if call is accurate
     try:
         pusher_key = request.GET.get('pusher_key')
-        entity_type = request.GET.get('entity_type')
+        entity_type = request.GET.get('type')
         user = request.user
 
         if not pusher_exists(pusher_key):
