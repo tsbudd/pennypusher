@@ -28,7 +28,7 @@ class UserSerializer(serializers.ModelSerializer):
 
 
 class PusherSerializer(serializers.ModelSerializer):
-    primaryUser = serializers.SerializerMethodField()
+    username = serializers.SerializerMethodField(read_only=True)
 
     def create(self, validated_data):
         pusher = Pusher.objects.create(
@@ -46,17 +46,22 @@ class PusherSerializer(serializers.ModelSerializer):
 
         return pusher
 
+    def get_primaryUser(self, obj):
+        return obj.primaryUser_id
+
+    def get_username(self, obj):
+        return obj.primaryUser.username
+
     class Meta:
         model = Pusher
-        fields = ['name', 'key', 'primaryUser', ]
-        read_only = ['key']
-
-    def get_primaryUser(self, obj):
-        user = User.objects.get(id=obj.primaryUser.id)
-        return user.username
+        fields = ['name', 'key', 'primaryUser', 'username']  # Remove 'primaryUser' from 'fields'
+        write_only_fields = ['primaryUser']
 
 
 class PusherAccessSerializer(serializers.ModelSerializer):
+    username = serializers.SerializerMethodField(read_only=True)
+    pusher_name = serializers.SerializerMethodField(read_only=True)
+
     def create(self, validated_data):
         pusher_access = PusherAccess.objects.create(
             user=validated_data['user'],
@@ -65,12 +70,22 @@ class PusherAccessSerializer(serializers.ModelSerializer):
         pusher_access.save()
         return pusher_access
 
+    def get_pusher_name(self, obj):
+        return obj.pusher.name
+
+    def get_username(self, obj):
+        return obj.user.username
+
     class Meta:
         model = PusherAccess
-        fields = ['user', 'pusher', 'access_time']
+        fields = ['user', 'pusher', 'access_time', 'username', 'pusher_name']
+        write_only_fields = ['user', 'pusher']
 
 
 class BudgetSerializer(serializers.ModelSerializer):
+    pusher_name = serializers.SerializerMethodField(read_only=True)
+    pusher_key = serializers.SerializerMethodField(read_only=True)
+
     def create(self, validated_data):
         budget = Budget.objects.create(
             pusher=validated_data['pusher'],
@@ -84,13 +99,22 @@ class BudgetSerializer(serializers.ModelSerializer):
         budget.save()
         return budget
 
+    def get_pusher_name(self, obj):
+        return obj.pusher.name
+
+    def get_pusher_key(self, obj):
+        return obj.pusher.key
+
     class Meta:
         model = Budget
-        fields = ['name', 'alloc_amt', 'priority',
-                  'pay_period', 'pay_start', 'category', 'pusher']
+        fields = ['name', 'alloc_amt', 'priority', 'pay_period', 'pay_start',
+                  'category', 'pusher', 'pusher_name', 'pusher_key']
 
 
 class FundSerializer(serializers.ModelSerializer):
+    pusher_name = serializers.SerializerMethodField(read_only=True)
+    pusher_key = serializers.SerializerMethodField(read_only=True)
+
     def create(self, validated_data):
         fund = Fund.objects.create(
             pusher=validated_data['pusher'],
@@ -102,53 +126,22 @@ class FundSerializer(serializers.ModelSerializer):
         fund.save()
         return fund
 
+    def get_pusher_name(self, obj):
+        return obj.pusher.name
+
+    def get_pusher_key(self, obj):
+        return obj.pusher.key
+
     class Meta:
         model = Fund
-        fields = ['name', 'goal_amt', 'priority', 'category', 'pusher']
-
-
-class IncomeSerializer(serializers.ModelSerializer):
-    def create(self, validated_data):
-        income = Income.objects.create(
-            user=validated_data['user'],
-            pusher=validated_data['pusher'],
-            item=validated_data['item'],
-            amount=validated_data['amount'],
-            source=validated_data['source'],
-            category=validated_data['category'],
-        )
-        income.save()
-
-        return income
-
-    class Meta:
-        model = Income
-        fields = ['user', 'item', 'amount', 'source', 'category', 'timestamp', 'pusher']
-
-
-class ExpenseSerializer(serializers.ModelSerializer):
-    def create(self, validated_data):
-        expense = Expense.objects.create(
-            user=validated_data['user'],
-            pusher=validated_data['pusher'],
-            item=validated_data['item'],
-            amount=validated_data['amount'],
-            party=validated_data['party'],
-            fund=validated_data['fund'],
-            budget=validated_data['budget'],
-            category=validated_data['category'],
-        )
-        expense.save()
-
-        return expense
-
-    class Meta:
-        model = Expense
-        fields = ['user', 'item', 'amount', 'party', 'fund', 'budget',
-                  'category', 'timestamp', 'pusher']
+        fields = ['name', 'goal_amt', 'priority', 'category', 'pusher', 'pusher_key', 'pusher_name']
 
 
 class BudgetValueSerializer(serializers.ModelSerializer):
+    budget_name = serializers.SerializerMethodField(read_only=True)
+    pusher_name = serializers.SerializerMethodField(read_only=True)
+    pusher_key = serializers.SerializerMethodField(read_only=True)
+
     def create(self, validated_data):
         budget_value = BudgetValue.objects.create(
             budget=validated_data['budget'],
@@ -157,12 +150,25 @@ class BudgetValueSerializer(serializers.ModelSerializer):
         budget_value.save()
         return budget_value
 
+    def get_pusher_name(self, obj):
+        return obj.budget.pusher.name
+
+    def get_pusher_key(self, obj):
+        return obj.budget.pusher.key
+
+    def get_budget_name(self, obj):
+        return obj.budget.name
+
     class Meta:
         model = BudgetValue
-        fields = ['budget', 'value', 'timestamp']
+        fields = ['budget', 'value', 'timestamp', 'budget_name', 'pusher_key', 'pusher_name']
 
 
 class FundValueSerializer(serializers.ModelSerializer):
+    fund_name = serializers.SerializerMethodField(read_only=True)
+    pusher_name = serializers.SerializerMethodField(read_only=True)
+    pusher_key = serializers.SerializerMethodField(read_only=True)
+
     def create(self, validated_data):
         fund_value = FundValue.objects.create(
             fund=validated_data['fund'],
@@ -171,9 +177,71 @@ class FundValueSerializer(serializers.ModelSerializer):
         fund_value.save()
         return fund_value
 
+    def get_pusher_name(self, obj):
+        return obj.fund.pusher.name
+
+    def get_pusher_key(self, obj):
+        return obj.fund.pusher.key
+
+    def get_fund_name(self, obj):
+        return obj.fund.name
+
     class Meta:
         model = FundValue
-        fields = ['fund', 'value', 'timestamp']
+        fields = ['fund', 'value', 'timestamp', 'fund_name', 'pusher_key', 'pusher_name']
+
+
+class AccountSerializer(serializers.ModelSerializer):
+    pusher_name = serializers.SerializerMethodField(read_only=True)
+    pusher_key = serializers.SerializerMethodField(read_only=True)
+
+    def create(self, validated_data):
+        account = Account.objects.create(
+            pusher=validated_data['pusher'],
+            name=validated_data['name'],
+            acct_number=validated_data['acct_number'],
+            rout_number=validated_data['rout_number']
+        )
+        account.save()
+        return account
+
+    def get_pusher_name(self, obj):
+        return obj.pusher.name
+
+    def get_pusher_key(self, obj):
+        return obj.pusher.key
+
+    class Meta:
+        model = Account
+        fields = ['pusher', 'name', 'acct_number', 'rout_number', 'pusher_key', 'pusher_name']
+
+
+class AccountValueSerializer(serializers.ModelSerializer):
+    account_name = serializers.SerializerMethodField(read_only=True)
+    pusher_name = serializers.SerializerMethodField(read_only=True)
+    pusher_key = serializers.SerializerMethodField(read_only=True)
+
+    def create(self, validated_data):
+        acct_value = AccountValue.objects.create(
+            account=validated_data['account'],
+            value=validated_data['value'],
+        )
+        acct_value.save()
+        return acct_value
+
+
+    def get_pusher_name(self, obj):
+        return obj.account.pusher.name
+
+    def get_pusher_key(self, obj):
+        return obj.account.pusher.key
+
+    def get_account_name(self, obj):
+        return obj.account.name
+
+    class Meta:
+        model = AccountValue
+        fields = ['account', 'value', 'timestamp', 'account_name', 'pusher_key', 'pusher_name']
 
 
 class PaycheckSerializer(serializers.ModelSerializer):
@@ -217,48 +285,45 @@ class PaycheckSerializer(serializers.ModelSerializer):
                   'federal_with', 'state_tax', 'city_tax', 'medicare', 'oasdi', 'net_amt']
 
 
-class ProfitSerializer(serializers.ModelSerializer):
+class IncomeSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
-        profit = Profit.objects.create(
+        income = Income.objects.create(
+            user=validated_data['user'],
             pusher=validated_data['pusher'],
+            item=validated_data['item'],
             amount=validated_data['amount'],
+            source=validated_data['source'],
+            category=validated_data['category'],
         )
-        profit.save()
-        return profit
+        income.save()
+
+        return income
 
     class Meta:
-        model = Profit
-        fields = ['pusher', 'amount', 'timestamp']
+        model = Income
+        fields = ['user', 'item', 'amount', 'source', 'category', 'timestamp', 'pusher']
 
 
-class AccountSerializer(serializers.ModelSerializer):
+class ExpenseSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
-        account = Account.objects.create(
+        expense = Expense.objects.create(
+            user=validated_data['user'],
             pusher=validated_data['pusher'],
-            name=validated_data['name'],
-            acct_number=validated_data['acct_number'],
-            rout_number=validated_data['rout_number']
+            item=validated_data['item'],
+            amount=validated_data['amount'],
+            party=validated_data['party'],
+            fund=validated_data['fund'],
+            budget=validated_data['budget'],
+            category=validated_data['category'],
         )
-        account.save()
-        return account
+        expense.save()
+
+        return expense
 
     class Meta:
-        model = Account
-        fields = ['pusher', 'name', 'acct_number', 'rout_number', ]
-
-
-class AccountValueSerializer(serializers.ModelSerializer):
-    def create(self, validated_data):
-        acct_value = AccountValue.objects.create(
-            account=validated_data['account'],
-            value=validated_data['value'],
-        )
-        acct_value.save()
-        return acct_value
-
-    class Meta:
-        model = AccountValue
-        fields = ['account', 'value', 'timestamp']
+        model = Expense
+        fields = ['user', 'item', 'amount', 'party', 'fund', 'budget',
+                  'category', 'timestamp', 'pusher']
 
 
 class ExpNetWorthSerializer(serializers.ModelSerializer):
