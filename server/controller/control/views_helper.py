@@ -1,3 +1,6 @@
+from datetime import datetime
+
+from rest_framework import status
 from rest_framework.response import Response
 from controller.serializers import *
 
@@ -117,14 +120,24 @@ def get_encapsulation_value(encapsulation_type, encapsulation_id, timestamp):
             return AccountValue.objects.get(account=encapsulation_id, timestamp=timestamp)
 
 
-def get_entity(entity_type, entity_id):
+def entity_exists(entity_type, pusher, timestamp):
     match entity_type:
         case 'income':
-            return Income.objects.get(id=entity_id)
+            return Income.objects.filter(pusher=pusher, timestamp=timestamp).exists()
         case 'expense':
-            return Expense.objects.get(id=entity_id)
+            return Expense.objects.filter(pusher=pusher, timestamp=timestamp).exists()
         case 'paycheck':
-            return Paycheck.objects.get(id=entity_id)
+            return Paycheck.objects.filter(pusher=pusher, pay_date=timestamp).exists()
+
+
+def get_entity(entity_type, pusher, timestamp):
+    match entity_type:
+        case 'income':
+            return Income.objects.get(pusher=pusher, timestamp=timestamp)
+        case 'expense':
+            return Expense.objects.get(pusher=pusher, timestamp=timestamp)
+        case 'paycheck':
+            return Paycheck.objects.get(pusher=pusher, pay_date=timestamp)
 
 
 def encapsulation_exists(entity_type, entity_name, pusher):
@@ -143,3 +156,35 @@ def encapsulation_value_exists(encapsulation_type, encapsulation_id, timestamp):
         return FundValue.objects.filter(fund=encapsulation_id, timestamp=timestamp).exists()
     elif encapsulation_type == 'account':
         return AccountValue.objects.filter(account=encapsulation_id, timestamp=timestamp).exists()
+
+
+def check_budget_validity(data, pusher):
+    if 'budget' in data:
+        if not encapsulation_exists('budget', data['budget'], pusher):
+            return failure_response("The budget [" + data['budget'] + "] does not exist.",
+                                    status.HTTP_400_BAD_REQUEST)
+        temp = Budget.objects.get(name=data['budget'], pusher=pusher)
+        data.update({'budget': temp.id, 'fund': None})
+        return data
+    elif 'fund' in data:
+        if not encapsulation_exists('fund', data['fund'], pusher):
+            return failure_response("The fund [" + data['fund'] + "] does not exist.",
+                                    status.HTTP_400_BAD_REQUEST)
+        temp = Budget.objects.get(name=data['fund'], pusher=pusher)
+        data.update({'fund': temp.id, 'budget': None})
+        return data
+
+
+def handle_paycheck_delete(pusher, entity_timestamp):
+    timestamp = datetime.strptime(entity_timestamp, '%Y-%m-%d').date()
+    if not entity_exists('paycheck', pusher, timestamp):
+        return failure_response("The paycheck at [" + entity_timestamp + "] does not exist.",
+                                status.HTTP_400_BAD_REQUEST)
+    paycheck = get_entity('paycheck', pusher, timestamp)
+    income = paycheck.income
+
+    # delete both paycheck and income
+    paycheck.delete()
+    income.delete()
+    return Response(status=status.HTTP_204_NO_CONTENT)
+
