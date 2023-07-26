@@ -83,7 +83,7 @@ WSGI_APPLICATION = 'configuration.wsgi.application'
 
 DATABASES = {}
 
-if os.environ.get('LOCAL_DB', 'true') == 'true':
+if os.environ.get('LOCAL_DB', 'false') == 'true':
     DATABASES['default'] = {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': BASE_DIR / 'db.sqlite3',
