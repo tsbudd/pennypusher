@@ -1,7 +1,3 @@
-from datetime import datetime
-
-from rest_framework.exceptions import ValidationError
-
 from .views_helper import *
 from rest_framework.decorators import api_view, permission_classes, authentication_classes
 from rest_framework.authentication import SessionAuthentication, BasicAuthentication
