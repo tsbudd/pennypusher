@@ -82,12 +82,6 @@ def get_entity_list(entity_type, pusher):
             return Fund.objects.filter(pusher=pusher)
         case 'account':
             return Account.objects.filter(pusher=pusher)
-        case 'budget_value':
-            return BudgetValue.objects.filter(pusher=pusher)
-        case 'fund_value':
-            return FundValue.objects.filter(pusher=pusher)
-        case 'fund_value':
-            return AccountValue.objects.filter(pusher=pusher)
 
 
 def get_encapsulation_value_list(encapsulation_type, encapsulation_id):

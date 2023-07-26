@@ -196,13 +196,17 @@ def encapsulation_value_func(request, format=None):
         encapsulation = get_encapsulation(encapsulation_type, encapsulation_name)
 
         if request.method == 'GET':
-            encapsulation_value_type = encapsulation_type+'_value'
+            encapsulation_value_type = encapsulation_type + '_value'
             # get all data
             entity_data = get_encapsulation_value_list(encapsulation_type, encapsulation.id)
-            serializer = get_serializer(encapsulation_value_type, entity_data, True)
+
+            # Create an instance of the custom pagination class
+            paginator = ResponsePagination()
+            result_page = paginator.paginate_queryset(entity_data, request)
+            serializer = get_serializer(encapsulation_value_type, result_page, many=True)
 
             if not serializer.is_valid():
-                return Response(data=serializer.data)
+                return paginator.get_paginated_response(serializer.data)
             else:
                 return Response(data=serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 

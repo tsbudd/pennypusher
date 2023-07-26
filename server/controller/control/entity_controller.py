@@ -79,8 +79,6 @@ def entity_func(request, format=None):
             return failure_response("The type " + entity_type + " is not allowed.", status.HTTP_400_BAD_REQUEST)
 
         if request.method == 'GET':
-            # this_month = request.GET.get('this_month', 'false')
-
             # get page of data
             paginator = ResponsePagination()
             entity_data = get_entity_list(entity_type, pusher)
