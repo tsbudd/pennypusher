@@ -13,7 +13,7 @@ def generate_key():
             return key
 
 
-def failure_response(error_description, error_status):
+def custom_response(error_description, error_status):
     error_data = {'description': error_description}
     return Response(data=error_data, status=error_status)
 
@@ -30,19 +30,39 @@ def user_has_access(user, pusher):
     return PusherAccess.objects.filter(user=user, pusher=pusher).exists()
 
 
-def entity_type_exists(entity_type):
+def entity_type_exists(e_type):
     allowed_types = ['income', 'expense', 'paycheck', 'profit', 'bills', 'subscription', 'for_sale',
-                     'budget', 'fund', 'account']
-    return entity_type in allowed_types
+                     'desired_purchase', 'net_worth', 'budget', 'fund', 'account']
+    return e_type in allowed_types
 
 
-def encapsulation_type_exists(entity_type):
-    allowed_types = ['budget', 'fund', 'account']
-    return entity_type in allowed_types
+def handle_valid_request(pusher_key, e_type, user):
+    if not pusher_exists(pusher_key):
+        return custom_response("The pusher_key " + pusher_key + " is not valid.", status.HTTP_400_BAD_REQUEST)
+    pusher = Pusher.objects.get(key=pusher_key)
+    if not user_has_access(user, pusher):
+        return custom_response("The user " + user + " does not have access to the pusher.",
+                               status.HTTP_401_UNAUTHORIZED)
+    if not entity_type_exists(e_type):
+        return custom_response("The type " + e_type + " is not allowed.", status.HTTP_400_BAD_REQUEST)
+
+    return pusher
 
 
-def get_serializer(entity_type, data, many):
-    match entity_type:
+def handle_ingestion(e_type, pusher, request_data):
+    if 'budget' in request_data or 'fund' in request_data:
+        request_data = check_encapsulation_validity(request_data, pusher)
+
+    serializer = get_serializer(e_type, request_data, False)
+    if serializer.is_valid():
+        serializer.save()
+        return Response(data=serializer.data)
+    else:
+        return Response(data=serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+def get_serializer(e_type, data, many):
+    match e_type:
         case 'income':
             return IncomeSerializer(data=data, many=many)
         case 'expense':
@@ -61,16 +81,47 @@ def get_serializer(entity_type, data, many):
             return FundValueSerializer(data=data, many=many)
         case 'account_value':
             return AccountValueSerializer(data=data, many=many)
-        # case 'bills':
-        #     return BillSerializer
-        # case 'subscription':
-        #     return SubscriptionSerializer
-        # case 'for_sale':
-        #     return ForSaleSerializer
+        case 'net_worth':
+            return ExpNetWorthSerializer(data=data, many=many)
+        case 'bills':
+            return BillSerializer(data=data, many=many)
+        case 'subscription':
+            return SubscriptionSerializer(data=data, many=many)
+        case 'for_sale':
+            return TradeSerializer(data=data, many=many)
 
 
-def get_entity_list(entity_type, pusher):
-    match entity_type:
+# ------------------------------------------ ENTITY ------------------------------------------
+def entity_exists(e_type, pusher, timestamp):
+    match e_type:
+        case 'income':
+            return Income.objects.filter(pusher=pusher, timestamp=timestamp).exists()
+        case 'expense':
+            return Expense.objects.filter(pusher=pusher, timestamp=timestamp).exists()
+        case 'paycheck':
+            return Paycheck.objects.filter(pusher=pusher, pay_date=timestamp).exists()
+        case 'net_worth':
+            return ExpNetWorth.objects.filter(pusher=pusher, timestamp=timestamp).exists()
+        case 'bills':
+            return Bills.objects.filter(pusher=pusher, timestamp=timestamp).exists()
+
+
+def get_entity(e_type, pusher, timestamp):
+    match e_type:
+        case 'income':
+            return Income.objects.get(pusher=pusher, timestamp=timestamp)
+        case 'expense':
+            return Expense.objects.get(pusher=pusher, timestamp=timestamp)
+        case 'paycheck':
+            return Paycheck.objects.get(pusher=pusher, pay_date=timestamp)
+        case 'net_worth':
+            return ExpNetWorth.objects.get(pusher=pusher, timestamp=timestamp)
+        case 'bills':
+            return Bills.objects.get(pusher=pusher, timestamp=timestamp)
+
+
+def get_entity_list(e_type, pusher):
+    match e_type:
         case 'income':
             return Income.objects.filter(pusher=pusher)
         case 'expense':
@@ -85,101 +136,99 @@ def get_entity_list(entity_type, pusher):
             return Account.objects.filter(pusher=pusher)
 
 
-def get_encapsulation_value_list(encapsulation_type, encapsulation_id):
-    match encapsulation_type:
+# ------------------------------------------ ELECTIVE ------------------------------------------
+def elective_exists(e_type, pusher, item):
+    match e_type:
+        case 'subscription':
+            return Subscription.objects.filter(pusher=pusher, item=item).exists()
+        case 'for_sale':
+            return Trade.objects.filter(pusher=pusher, item=item, type='for_sale').exists()
+        case 'desired_purchase':
+            return Trade.objects.filter(pusher=pusher, item=item, type='desired_purchase').exists()
+
+
+def get_elective(e_type, pusher, item):
+    match e_type:
+        case 'subscription':
+            return Subscription.objects.get(pusher=pusher, item=item)
+        case 'for_sale':
+            return Trade.objects.get(pusher=pusher, item=item, type='for_sale')
+        case 'desired_purchase':
+            return Trade.objects.get(pusher=pusher, item=item, type='desired_purchase')
+
+
+# ------------------------------------------ ENCAPSULATION ------------------------------------------
+def encapsulation_exists(e_type, name, pusher):
+    if e_type == 'budget':
+        return Budget.objects.filter(pusher=pusher, name=name).exists()
+    elif e_type == 'fund':
+        return Fund.objects.filter(pusher=pusher, name=name).exists()
+    elif e_type == 'account':
+        return Account.objects.filter(pusher=pusher, name=name).exists()
+
+
+def get_encapsulation(e_type, e_name, pusher):
+    match e_type:
         case 'budget':
-            return BudgetValue.objects.filter(budget=encapsulation_id)
+            return Budget.objects.get(name=e_name, pusher=pusher)
         case 'fund':
-            return FundValue.objects.filter(fund=encapsulation_id)
+            return Fund.objects.get(name=e_name, pusher=pusher)
         case 'account':
-            return AccountValue.objects.filter(account=encapsulation_id)
+            return Account.objects.get(name=e_name, pusher=pusher)
 
 
-def get_encapsulation(encapsulation_type, encapsulation_name):
-    match encapsulation_type:
+def get_encapsulation_list(e_type, pusher):
+    match e_type:
         case 'budget':
-            return Budget.objects.get(name=encapsulation_name)
+            return BudgetValue.objects.filter(pusher=pusher)
         case 'fund':
-            return Fund.objects.get(name=encapsulation_name)
+            return FundValue.objects.filter(pusher=pusher)
         case 'account':
-            return Account.objects.get(name=encapsulation_name)
+            return AccountValue.objects.filter(pusher=pusher)
 
 
-def get_encapsulation_value(encapsulation_type, encapsulation_id, timestamp):
-    match encapsulation_type:
-        case 'budget':
-            return BudgetValue.objects.get(budget=encapsulation_id, timestamp=timestamp)
-        case 'fund':
-            return FundValue.objects.get(fund=encapsulation_id, timestamp=timestamp)
-        case 'account':
-            return AccountValue.objects.get(account=encapsulation_id, timestamp=timestamp)
-
-
-def entity_exists(entity_type, pusher, timestamp):
-    match entity_type:
-        case 'income':
-            return Income.objects.filter(pusher=pusher, timestamp=timestamp).exists()
-        case 'expense':
-            return Expense.objects.filter(pusher=pusher, timestamp=timestamp).exists()
-        case 'paycheck':
-            return Paycheck.objects.filter(pusher=pusher, pay_date=timestamp).exists()
-
-
-def get_entity(entity_type, pusher, timestamp):
-    match entity_type:
-        case 'income':
-            return Income.objects.get(pusher=pusher, timestamp=timestamp)
-        case 'expense':
-            return Expense.objects.get(pusher=pusher, timestamp=timestamp)
-        case 'paycheck':
-            return Paycheck.objects.get(pusher=pusher, pay_date=timestamp)
-
-
-def encapsulation_exists(entity_type, entity_name, pusher):
-    if entity_type == 'budget':
-        return Budget.objects.filter(pusher=pusher, name=entity_name).exists()
-    elif entity_type == 'fund':
-        return Fund.objects.filter(pusher=pusher, name=entity_name).exists()
-    elif entity_type == 'account':
-        return Account.objects.filter(pusher=pusher, name=entity_name).exists()
-
-
-def encapsulation_value_exists(encapsulation_type, encapsulation_id, timestamp):
-    if encapsulation_type == 'budget':
-        return BudgetValue.objects.filter(budget=encapsulation_id, timestamp=timestamp).exists()
-    elif encapsulation_type == 'fund':
-        return FundValue.objects.filter(fund=encapsulation_id, timestamp=timestamp).exists()
-    elif encapsulation_type == 'account':
-        return AccountValue.objects.filter(account=encapsulation_id, timestamp=timestamp).exists()
-
-
-def check_budget_validity(data, pusher):
+def check_encapsulation_validity(data, pusher):
     if 'budget' in data:
         if not encapsulation_exists('budget', data['budget'], pusher):
-            return failure_response("The budget [" + data['budget'] + "] does not exist.",
-                                    status.HTTP_400_BAD_REQUEST)
+            return custom_response("The budget [" + data['budget'] + "] does not exist.",
+                                   status.HTTP_400_BAD_REQUEST)
         temp = Budget.objects.get(name=data['budget'], pusher=pusher)
         data.update({'budget': temp.id, 'fund': None})
         return data
     elif 'fund' in data:
         if not encapsulation_exists('fund', data['fund'], pusher):
-            return failure_response("The fund [" + data['fund'] + "] does not exist.",
-                                    status.HTTP_400_BAD_REQUEST)
-        temp = Budget.objects.get(name=data['fund'], pusher=pusher)
+            return custom_response("The fund [" + data['fund'] + "] does not exist.",
+                                   status.HTTP_400_BAD_REQUEST)
+        temp = Fund.objects.get(name=data['fund'], pusher=pusher)
         data.update({'fund': temp.id, 'budget': None})
         return data
 
 
-def handle_paycheck_delete(pusher, entity_timestamp):
-    timestamp = datetime.strptime(entity_timestamp, '%Y-%m-%d').date()
-    if not entity_exists('paycheck', pusher, timestamp):
-        return failure_response("The paycheck at [" + entity_timestamp + "] does not exist.",
-                                status.HTTP_400_BAD_REQUEST)
-    paycheck = get_entity('paycheck', pusher, timestamp)
-    income = paycheck.income
+# -------------------------------------- ENCAPSULATION VALUE --------------------------------------
+def encapsulation_value_exists(e_type, e_id, timestamp):
+    if e_type == 'budget':
+        return BudgetValue.objects.filter(budget=e_id, timestamp=timestamp).exists()
+    elif e_type == 'fund':
+        return FundValue.objects.filter(fund=e_id, timestamp=timestamp).exists()
+    elif e_type == 'account':
+        return AccountValue.objects.filter(account=e_id, timestamp=timestamp).exists()
 
-    # delete both paycheck and income
-    paycheck.delete()
-    income.delete()
-    return Response(status=status.HTTP_204_NO_CONTENT)
 
+def get_encapsulation_value(e_type, e_id, timestamp):
+    match e_type:
+        case 'budget':
+            return BudgetValue.objects.get(budget=e_id, timestamp=timestamp)
+        case 'fund':
+            return FundValue.objects.get(fund=e_id, timestamp=timestamp)
+        case 'account':
+            return AccountValue.objects.get(account=e_id, timestamp=timestamp)
+
+
+def get_encapsulation_value_list(e_type, e_id):
+    match e_type:
+        case 'budget':
+            return BudgetValue.objects.filter(budget=e_id)
+        case 'fund':
+            return FundValue.objects.filter(fund=e_id)
+        case 'account':
+            return AccountValue.objects.filter(account=e_id)

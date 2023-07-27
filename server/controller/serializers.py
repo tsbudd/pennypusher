@@ -246,25 +246,14 @@ class AccountValueSerializer(serializers.ModelSerializer):
 
 class PaycheckSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
-        income = Income.objects.create(
-            user=validated_data['user'],
-            pusher=validated_data['pusher'],
-            item=validated_data['company_name'] + " paycheck",
-            amount=validated_data['net_amt'],
-            source=validated_data['company_name'],
-            category="Paychecks",
-        )
-        income.save()
-
         paycheck = Paycheck.objects.create(
+            item=validated_data['item'],
             user=validated_data['user'],
             pusher=validated_data['pusher'],
-            income=income,
-            company_name=validated_data['company_name'],
+            source=validated_data['source'],
             hours=validated_data['hours'],
             start_date=validated_data['start_date'],
             end_date=validated_data['end_date'],
-            pay_date=validated_data['pay_date'],
             gross_amt=validated_data['gross_amt'],
             pre_tax_deduc=validated_data['pre_tax_deduc'],
             post_tax_deduc=validated_data['post_tax_deduc'],
@@ -273,16 +262,15 @@ class PaycheckSerializer(serializers.ModelSerializer):
             city_tax=validated_data['city_tax'],
             medicare=validated_data['medicare'],
             oasdi=validated_data['oasdi'],
-            net_amt=validated_data['net_amt'],
+            amount=validated_data['amount']
         )
-        paycheck.save()
         return paycheck
 
     class Meta:
         model = Paycheck
-        fields = ['user', 'pusher', 'company_name', 'hours', 'start_date',
-                  'end_date', 'pay_date', 'gross_amt', 'pre_tax_deduc', 'post_tax_deduc',
-                  'federal_with', 'state_tax', 'city_tax', 'medicare', 'oasdi', 'net_amt']
+        fields = ['user', 'pusher', 'source', 'hours', 'start_date',
+                  'end_date', 'timestamp', 'gross_amt', 'pre_tax_deduc', 'post_tax_deduc',
+                  'federal_with', 'state_tax', 'city_tax', 'medicare', 'oasdi', 'amount', 'item']
 
 
 class IncomeSerializer(serializers.ModelSerializer):
@@ -316,7 +304,6 @@ class ExpenseSerializer(serializers.ModelSerializer):
             budget=validated_data['budget'],
             category=validated_data['category'],
         )
-        expense.save()
 
         return expense
 
@@ -338,3 +325,59 @@ class ExpNetWorthSerializer(serializers.ModelSerializer):
     class Meta:
         model = ExpNetWorth
         fields = ['pusher', 'amount', 'timestamp']
+
+
+class BillSerializer(serializers.ModelSerializer):
+    def create(self, validated_data):
+        bill = Bills.objects.create(
+            user=validated_data['user'],
+            pusher=validated_data['pusher'],
+            item=validated_data['item'],
+            amount=validated_data['amount'],
+            party=validated_data['party'],
+            fund=validated_data['fund'],
+            budget=validated_data['budget'],
+            category='Bills',
+            status=validated_data['status'],
+            due_date=validated_data['due_date']
+        )
+
+        return bill
+
+    class Meta:
+        model = Bills
+        fields = ['pusher', 'user', 'item', 'amount', 'party', 'fund',
+                  'budget', 'category', 'status', 'due_date']
+
+
+class SubscriptionSerializer(serializers.ModelSerializer):
+    def create(self, validated_data):
+        subscription = Subscription.objects.create(
+            pusher=validated_data['pusher'],
+            item=validated_data['item'],
+            amount=validated_data['amount'],
+            pay_period=validated_data['pay_period'],
+            start_date=validated_data['start_date'],
+            status=validated_data['status']
+        )
+        return subscription
+
+    class Meta:
+        model = Subscription
+        fields = ['pusher', 'item', 'amount', 'pay_period', 'start_date', 'status']
+
+
+class TradeSerializer(serializers.ModelSerializer):
+    def create(self, validated_data):
+        trade = Trade.objects.create(
+            pusher=validated_data['pusher'],
+            item=validated_data['item'],
+            amount=validated_data['amount'],
+            status=validated_data['status'],
+            type=validated_data['type']
+        )
+        return trade
+
+    class Meta:
+        model = Bills
+        fields = ['pusher']

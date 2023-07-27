@@ -34,8 +34,8 @@ def pusher_new(request, format=None):
         pusher_name = request.data['name']
 
         if Pusher.objects.filter(primaryUser=user, name=pusher_name).exists():
-            return failure_response("The user " + user.username + " already has a pusher called " + pusher_name + ".",
-                                    status.HTTP_400_BAD_REQUEST)
+            return custom_response("The user " + user.username + " already has a pusher called " + pusher_name + ".",
+                                   status.HTTP_400_BAD_REQUEST)
 
         request_data = request.data
         request_data.update({'key': generate_key()})
@@ -48,7 +48,7 @@ def pusher_new(request, format=None):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     except (TypeError, KeyError) as e:
-        return failure_response("System Error", status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return custom_response("System Error", status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 # @limits(key='ip', rate='100/h')
@@ -66,12 +66,12 @@ def pusher_func(request, format=None):
         user = request.user
 
         if not pusher_exists(pusher_key):
-            return failure_response("The pusher_key [" + pusher_key + "] is not valid.", status.HTTP_400_BAD_REQUEST)
+            return custom_response("The pusher_key [" + pusher_key + "] is not valid.", status.HTTP_400_BAD_REQUEST)
 
         pusher = Pusher.objects.get(key=pusher_key)
         if not user_has_access(user, pusher):
-            return failure_response("The user [" + user + "] does not have access to the pusher.",
-                                    status.HTTP_401_UNAUTHORIZED)
+            return custom_response("The user [" + user + "] does not have access to the pusher.",
+                                   status.HTTP_401_UNAUTHORIZED)
 
         if request.method == 'GET':
             serializer = PusherSerializer(pusher)
@@ -92,7 +92,7 @@ def pusher_func(request, format=None):
             return Response(status=status.HTTP_204_NO_CONTENT)
 
     except TypeError as e:
-        return failure_response("System Error", status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return custom_response("System Error", status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 # -------------------------------------------- PUSHER ACCESS ------------------------------------------
@@ -107,18 +107,18 @@ def pusher_access_new(request, format=None):
         request_user = request.user
 
         if not pusher_exists(pusher_key):
-            return failure_response("The pusher_key " + pusher_key + " is not valid.", status.HTTP_400_BAD_REQUEST)
+            return custom_response("The pusher_key " + pusher_key + " is not valid.", status.HTTP_400_BAD_REQUEST)
         if not user_exists(username):
-            return failure_response("The user " + username + " does not exist.", status.HTTP_400_BAD_REQUEST)
+            return custom_response("The user " + username + " does not exist.", status.HTTP_400_BAD_REQUEST)
 
         pusher = Pusher.objects.get(key=pusher_key)
         new_user = User.objects.get(username=username)
         if not user_has_access(request_user.id, pusher.id):
-            return failure_response("The user " + request_user + " does not have access to the specified pusher.",
-                                    status.HTTP_401_UNAUTHORIZED)
+            return custom_response("The user " + request_user + " does not have access to the specified pusher.",
+                                   status.HTTP_401_UNAUTHORIZED)
         if user_has_access(new_user.id, pusher.id):
-            return failure_response("The user " + username + " already has access to the specified pusher.",
-                                    status.HTTP_400_BAD_REQUEST)
+            return custom_response("The user " + username + " already has access to the specified pusher.",
+                                   status.HTTP_400_BAD_REQUEST)
 
         new_user = User.objects.get(username=username)
 
@@ -144,15 +144,15 @@ def pusher_access_all(request, format=None):
     request_user = request.user
 
     if not pusher_exists(pusher_key):
-        return failure_response("The pusher_key " + pusher_key + " is not valid.", status.HTTP_400_BAD_REQUEST)
+        return custom_response("The pusher_key " + pusher_key + " is not valid.", status.HTTP_400_BAD_REQUEST)
 
     pusher = Pusher.objects.get(key=pusher_key)
     if not user_has_access(request_user, pusher):
-        return failure_response("The user " + request_user + " does not have access to the specified pusher.",
-                                status.HTTP_401_UNAUTHORIZED)
+        return custom_response("The user " + request_user + " does not have access to the specified pusher.",
+                               status.HTTP_401_UNAUTHORIZED)
     if request.user != pusher.primaryUser:
-        return failure_response("The user " + request_user + " is not an admin of the specified pusher.",
-                                status.HTTP_401_UNAUTHORIZED)
+        return custom_response("The user " + request_user + " is not an admin of the specified pusher.",
+                               status.HTTP_401_UNAUTHORIZED)
 
     # getting all users who have access to pusher
     if request.method == 'GET':
@@ -174,12 +174,12 @@ def pusher_access_func(request, format=None):
         request_user = request.user
 
         if not pusher_exists(pusher_key):
-            return failure_response("The pusher_key " + pusher_key + " is not valid.", status.HTTP_400_BAD_REQUEST)
+            return custom_response("The pusher_key " + pusher_key + " is not valid.", status.HTTP_400_BAD_REQUEST)
 
         pusher = Pusher.objects.get(key=pusher_key)
         if not user_has_access(request_user, pusher):
-            return failure_response("The user " + request_user + " does not have access to the specified pusher.",
-                                    status.HTTP_401_UNAUTHORIZED)
+            return custom_response("The user " + request_user + " does not have access to the specified pusher.",
+                                   status.HTTP_401_UNAUTHORIZED)
 
         # getting all pushers user has access to
         if request.method == 'GET':
@@ -194,15 +194,15 @@ def pusher_access_func(request, format=None):
             username = request.GET.get('username')
 
             if not user_exists(username):
-                return failure_response("The user " + username + " does not exist.", status.HTTP_400_BAD_REQUEST)
+                return custom_response("The user " + username + " does not exist.", status.HTTP_400_BAD_REQUEST)
 
             user = User.objects.get(username=username)
             if not user_has_access(user, pusher):
-                return failure_response("The user " + username + " does not have access to this pusher.",
-                                        status.HTTP_400_BAD_REQUEST)
+                return custom_response("The user " + username + " does not have access to this pusher.",
+                                       status.HTTP_400_BAD_REQUEST)
             if pusher.primaryUser == user:
-                return failure_response("You cannot delete yourself from the pusher since you are the primary user",
-                                        status.HTTP_401_UNAUTHORIZED)
+                return custom_response("You cannot delete yourself from the pusher since you are the primary user",
+                                       status.HTTP_401_UNAUTHORIZED)
 
             if user != request.user:
                 pusher_access = PusherAccess.objects.get(pusher=pusher, user=user)
