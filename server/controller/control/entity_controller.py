@@ -1,6 +1,4 @@
 from datetime import datetime
-
-from django.http import HttpResponse
 from rest_framework.pagination import PageNumberPagination
 from .views_helper import *
 from rest_framework.decorators import api_view, permission_classes, authentication_classes
@@ -13,10 +11,6 @@ from rest_framework import status
 class ResponsePagination(PageNumberPagination):
     page_size = 50
     page_size_query_param = 'page_size'
-
-
-def index():
-    return HttpResponse("PennyPusher Index")
 
 
 # -------------------------------------------- ENTITY ------------------------------------------
