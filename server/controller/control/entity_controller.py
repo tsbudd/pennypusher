@@ -41,7 +41,7 @@ def entity_new(request, format=None):
         # handling POST
         return handle_ingestion(e_type, pusher, request_data)
 
-    except TypeError:
+    except KeyError:
         return Response(status=status.HTTP_400_BAD_REQUEST)
 
 

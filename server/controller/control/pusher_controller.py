@@ -39,7 +39,7 @@ def pusher_new(request, format=None):
 
         request_data = request.data
         request_data.update({'key': generate_key()})
-        request_data.update({'primaryUser': user.id})
+        request_data.update({'user': user.id})
 
         serializer = PusherSerializer(data=request_data)
         if serializer.is_valid():
