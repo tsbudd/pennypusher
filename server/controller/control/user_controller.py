@@ -37,8 +37,8 @@ def user_register(request):
     username = request.data['username']
 
     if user_exists(username):
-        return failure_response("The user " + username + " already exists.",
-                                status.HTTP_204_NO_CONTENT)
+        return custom_response("The user " + username + " already exists.",
+                               status.HTTP_204_NO_CONTENT)
 
     serializer = UserSerializer(data=request.data)
     if serializer.is_valid():

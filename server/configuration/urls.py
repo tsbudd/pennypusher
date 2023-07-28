@@ -52,6 +52,9 @@ urlpatterns = [
     path('encapsulation/value/new/', encapsulation_controller.encapsulation_value_new),
     path('encapsulation/value/', encapsulation_controller.encapsulation_value_func),
 
+    # Net Worth
+    path('net_worth/', encapsulation_controller.net_worth_history),
+
     # Entities
     path('entity/new/', entity_controller.entity_new),
     path('entity/', entity_controller.entity_func),
