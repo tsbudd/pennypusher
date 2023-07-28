@@ -20,16 +20,16 @@ class ResponsePagination(PageNumberPagination):
 def encapsulation_new(request, format=None):
     try:
         pusher_key = request.data['pusher_key']
-        encapsulation_type = request.data['type']
+        e_type = request.data['type']
         name = request.data['name']
-        user = request.data
+        user = request.user
 
-        pusher = handle_valid_request(pusher_key, encapsulation_type, user)
+        pusher = handle_valid_request(pusher_key, e_type, user)
         if isinstance(pusher, Response):
             return pusher
 
-        if encapsulation_exists(encapsulation_type, name, pusher):
-            return custom_response("The " + encapsulation_type + " [" + name + "] already exists.",
+        if encapsulation_exists(e_type, name, pusher):
+            return custom_response("The " + e_type + " [" + name + "] already exists.",
                                    status.HTTP_400_BAD_REQUEST)
 
         # retrieving the pusher and other data
@@ -37,9 +37,9 @@ def encapsulation_new(request, format=None):
         request_data.update({'pusher': pusher.id, 'user': user.id, 'name': name})
 
         # handling POST
-        return handle_ingestion(encapsulation_type, pusher, request_data)
+        return handle_ingestion(e_type, pusher, request_data)
 
-    except TypeError:
+    except KeyError:
         return Response(status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
@@ -52,56 +52,57 @@ def encapsulation_func(request, format=None):
     try:
         if request.method == 'PUT':
             pusher_key = request.data['pusher_key']
-            encapsulation_type = request.data['type']
+            e_type = request.data['type']
         else:
             pusher_key = request.GET.get('pusher_key')
-            encapsulation_type = request.GET.get('type')
+            e_type = request.GET.get('type')
         user = request.user
 
-        pusher = handle_valid_request(pusher_key, encapsulation_type, user)
+        pusher = handle_valid_request(pusher_key, e_type, user)
         if isinstance(pusher, Response):
             return pusher
 
         if request.method == 'GET':
             # get all data
-            entity_data = get_entity_list(encapsulation_type, pusher)
-            serializer = get_serializer(encapsulation_type, entity_data, True)
+            entity_data = get_entity_list(e_type, pusher)
+            serializer = get_serializer(e_type, entity_data, True)
 
             if not serializer.is_valid():
                 serializer_data = serializer.data
                 return Response(data=serializer_data)
             else:
-                return custom_response("Invalid encapsulation_type: " + encapsulation_type,
+                return custom_response("Invalid encapsulation_type: " + e_type,
                                        status.HTTP_400_BAD_REQUEST)
 
         elif request.method == 'PUT':
 
             # fixme i think i can make this a function call
             name = request.data['name']
-            if not encapsulation_exists(encapsulation_type, name, pusher):
-                return custom_response("The " + encapsulation_type + " [" + name + "] does not exist.",
+            if not encapsulation_exists(e_type, name, pusher):
+                return custom_response("The " + e_type + " [" + name + "] does not exist.",
                                        status.HTTP_400_BAD_REQUEST)
 
-            # encapsulation = get_encapsulation(encapsulation_type, encapsulation_name)
+            encapsulation = get_encapsulation(e_type, name, pusher)
             request_data = request.data['data']
             request_data.update({'name': name, 'pusher': pusher.id})
 
             # handle_ingestion
-            serializer = get_serializer(encapsulation_type, request_data, False)
+            serializer = get_serializer(e_type, request_data, False)
             if serializer.is_valid():
-                # encapsulation.delete()
+                encapsulation.delete()
                 serializer.save()
                 return Response(serializer.data)
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
         elif request.method == 'DELETE':
             name = request.GET.get('name')
-            if not encapsulation_exists(encapsulation_type, name, pusher):
-                return custom_response("The " + encapsulation_type + " [" + name + "] does not exist.",
+            if not encapsulation_exists(e_type, name, pusher):
+                return custom_response("The " + e_type + " [" + name + "] does not exist.",
                                        status.HTTP_400_BAD_REQUEST)
-            encapsulation = get_encapsulation(encapsulation_type, name, pusher)
+            encapsulation = get_encapsulation(e_type, name, pusher)
             encapsulation.delete()
-            return Response(status=status.HTTP_204_NO_CONTENT)
+            return custom_response("Successful deletion of " + e_type + " [" + encapsulation.name + "].",
+                                   status.HTTP_204_NO_CONTENT)
 
     except TypeError:
         return Response(status=status.HTTP_400_BAD_REQUEST)
@@ -114,7 +115,7 @@ def encapsulation_func(request, format=None):
 def encapsulation_value_new(request, format=None):
     try:
         pusher_key = request.data['pusher_key']
-        e_type = request.data['type']
+        e_type = request.data['type'] + "_value"
         user = request.user
 
         pusher = handle_valid_request(pusher_key, e_type, user)
@@ -127,12 +128,13 @@ def encapsulation_value_new(request, format=None):
 
         return handle_ingestion(e_type, pusher, request_data)
 
-    except KeyError:
-        return Response(status=status.HTTP_400_BAD_REQUEST)
+    except User.DoesNotExist:
+        return Response(status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 # @limits(key='ip', rate='100/h')
-@api_view(['GET', 'DELETE'])
+# @api_view(['GET', 'DELETE'])  # uncomment if i want to enable DELETE method
+@api_view(['GET'])
 @authentication_classes([SessionAuthentication, BasicAuthentication])
 @permission_classes([IsAuthenticated])
 def encapsulation_value_func(request, format=None):
@@ -175,7 +177,8 @@ def encapsulation_value_func(request, format=None):
 
             encapsulation_value = get_encapsulation_value(e_type, encapsulation.id, date_object)
             encapsulation_value.delete()
-            return Response(status=status.HTTP_204_NO_CONTENT)
+            return custom_response("Successful deletion of " + e_type + " value at [" + encapsulation.name + "].",
+                                   status.HTTP_204_NO_CONTENT)
 
-    except TypeError:
+    except KeyError:
         return Response(status=status.HTTP_400_BAD_REQUEST)

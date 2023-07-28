@@ -1,5 +1,4 @@
 import uuid
-from datetime import datetime
 
 from rest_framework import status
 from rest_framework.response import Response
@@ -31,8 +30,9 @@ def user_has_access(user, pusher):
 
 
 def entity_type_exists(e_type):
-    allowed_types = ['income', 'expense', 'paycheck', 'profit', 'bills', 'subscription', 'for_sale',
-                     'desired_purchase', 'net_worth', 'budget', 'fund', 'account']
+    allowed_types = ['income', 'expense', 'paycheck', 'profit', 'bill', 'subscription', 'for_sale',
+                     'desired_purchase', 'net_worth', 'budget', 'fund', 'account', 'budget_value',
+                     'fund_value', 'account_value']
     return e_type in allowed_types
 
 
@@ -50,11 +50,49 @@ def handle_valid_request(pusher_key, e_type, user):
 
 
 def handle_ingestion(e_type, pusher, request_data):
-    if 'budget' in request_data or 'fund' in request_data:
+    if e_type == 'bill':
+        return handle_bill_ingestion(pusher, request_data)
+    if 'budget' in request_data or 'fund' in request_data or 'account' in request_data:
         request_data = check_encapsulation_validity(request_data, pusher)
+        if isinstance(request_data, Response):
+            return request_data
+
+    if e_type in ['subscription', 'for_sale', 'desired_purchase']:
+        item = request_data['item']
+        if elective_exists(e_type, pusher, item):
+            return custom_response("The " + e_type + " [" + item + "] already exists.",
+                                   status.HTTP_400_BAD_REQUEST)
 
     serializer = get_serializer(e_type, request_data, False)
     if serializer.is_valid():
+        serializer.save()
+        return Response(data=serializer.data)
+    else:
+        return Response(data=serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+def handle_modification(e_type, pusher, request_data):
+    if e_type == 'bill':
+        return handle_bill_modification(pusher, request_data)
+    if 'budget' in request_data or 'fund' in request_data or 'account' in request_data:
+        request_data = check_encapsulation_validity(request_data, pusher)
+        if isinstance(request_data, Response):
+            return request_data
+
+    # get original encapsulation/elective
+    if e_type in ['subscription', 'for_sale', 'desired_purchase']:
+        item = request_data['item']
+        if not elective_exists(e_type, pusher, item):
+            return custom_response("The " + e_type + " [" + item + "] does not exist.",
+                                   status.HTTP_400_BAD_REQUEST)
+        original = get_elective(e_type, pusher, item)
+    else:
+        name = request_data['name']
+        original = get_encapsulation(e_type, name, pusher)
+
+    serializer = get_serializer(e_type, request_data, False)
+    if serializer.is_valid():
+        original.delete()
         serializer.save()
         return Response(data=serializer.data)
     else:
@@ -83,11 +121,13 @@ def get_serializer(e_type, data, many):
             return AccountValueSerializer(data=data, many=many)
         case 'net_worth':
             return ExpNetWorthSerializer(data=data, many=many)
-        case 'bills':
+        case 'bill':
             return BillSerializer(data=data, many=many)
         case 'subscription':
             return SubscriptionSerializer(data=data, many=many)
         case 'for_sale':
+            return TradeSerializer(data=data, many=many)
+        case 'desired_purchase':
             return TradeSerializer(data=data, many=many)
 
 
@@ -99,10 +139,10 @@ def entity_exists(e_type, pusher, timestamp):
         case 'expense':
             return Expense.objects.filter(pusher=pusher, timestamp=timestamp).exists()
         case 'paycheck':
-            return Paycheck.objects.filter(pusher=pusher, pay_date=timestamp).exists()
+            return Paycheck.objects.filter(pusher=pusher, timestamp=timestamp).exists()
         case 'net_worth':
             return ExpNetWorth.objects.filter(pusher=pusher, timestamp=timestamp).exists()
-        case 'bills':
+        case 'bill':
             return Bills.objects.filter(pusher=pusher, timestamp=timestamp).exists()
 
 
@@ -113,10 +153,10 @@ def get_entity(e_type, pusher, timestamp):
         case 'expense':
             return Expense.objects.get(pusher=pusher, timestamp=timestamp)
         case 'paycheck':
-            return Paycheck.objects.get(pusher=pusher, pay_date=timestamp)
+            return Paycheck.objects.get(pusher=pusher, timestamp=timestamp)
         case 'net_worth':
             return ExpNetWorth.objects.get(pusher=pusher, timestamp=timestamp)
-        case 'bills':
+        case 'bill':
             return Bills.objects.get(pusher=pusher, timestamp=timestamp)
 
 
@@ -134,23 +174,35 @@ def get_entity_list(e_type, pusher):
             return Fund.objects.filter(pusher=pusher)
         case 'account':
             return Account.objects.filter(pusher=pusher)
+        case 'subscription':
+            return Subscription.objects.filter(pusher=pusher)
+        case 'for_sale':
+            return Trade.objects.filter(pusher=pusher, type='for_sale')
+        case 'desired_purchase':
+            return Trade.objects.filter(pusher=pusher, type='desired_purchase')
+        case 'bill':
+            return Bills.objects.filter(pusher=pusher)
 
 
 # ------------------------------------------ ELECTIVE ------------------------------------------
-def elective_exists(e_type, pusher, item):
+def elective_exists(e_type, pusher, item, due_date=None):
     match e_type:
         case 'subscription':
             return Subscription.objects.filter(pusher=pusher, item=item).exists()
+        case 'bill':
+            return Bills.objects.filter(pusher=pusher, item=item, due_date=due_date).exists()
         case 'for_sale':
             return Trade.objects.filter(pusher=pusher, item=item, type='for_sale').exists()
         case 'desired_purchase':
             return Trade.objects.filter(pusher=pusher, item=item, type='desired_purchase').exists()
 
 
-def get_elective(e_type, pusher, item):
+def get_elective(e_type, pusher, item, due_date=None):
     match e_type:
         case 'subscription':
             return Subscription.objects.get(pusher=pusher, item=item)
+        case 'bill':
+            return Bills.objects.get(pusher=pusher, item=item, due_date=due_date)
         case 'for_sale':
             return Trade.objects.get(pusher=pusher, item=item, type='for_sale')
         case 'desired_purchase':
@@ -202,6 +254,13 @@ def check_encapsulation_validity(data, pusher):
         temp = Fund.objects.get(name=data['fund'], pusher=pusher)
         data.update({'fund': temp.id, 'budget': None})
         return data
+    elif 'account' in data:
+        if not encapsulation_exists('account', data['account'], pusher):
+            return custom_response("The account [" + data['account'] + "] does not exist.",
+                                   status.HTTP_400_BAD_REQUEST)
+        temp = Account.objects.get(name=data['account'], pusher=pusher)
+        data.update({'account': temp.id})
+        return data
 
 
 # -------------------------------------- ENCAPSULATION VALUE --------------------------------------
@@ -232,3 +291,48 @@ def get_encapsulation_value_list(e_type, e_id):
             return FundValue.objects.filter(fund=e_id)
         case 'account':
             return AccountValue.objects.filter(account=e_id)
+
+
+# -------------------------------------- BILL Handling --------------------------------------
+def handle_bill_ingestion(pusher, request_data):
+    # check encapsulation validity
+    request_data = check_encapsulation_validity(request_data, pusher)
+    if isinstance(request_data, Response):
+        return request_data
+
+    # check if bill exists
+    item = request_data['item']
+    due_date = request_data['due_date']
+    if elective_exists('bill', pusher, item, due_date):
+        return custom_response("The " + item + " bill due at [" + due_date + "] already exists.",
+                               status.HTTP_400_BAD_REQUEST)
+
+    serializer = get_serializer('bill', request_data, False)
+    if serializer.is_valid():
+        serializer.save()
+        return Response(data=serializer.data)
+    else:
+        return Response(data=serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+def handle_bill_modification(pusher, request_data):
+    # checking budget or fund validity
+    request_data = check_encapsulation_validity(request_data, pusher)
+    if isinstance(request_data, Response):
+        return request_data
+
+    # getting original bill
+    item = request_data['item']
+    due_date = request_data['due_date']
+    if not elective_exists('bill', pusher, item, due_date):
+        return custom_response("The" + item + " bill due at [" + due_date + "] does not exist.",
+                               status.HTTP_400_BAD_REQUEST)
+    original = get_elective('bill', pusher, item, due_date)
+
+    serializer = get_serializer('bill', request_data, False)
+    if serializer.is_valid():
+        original.delete()
+        serializer.save()
+        return Response(data=serializer.data)
+    else:
+        return Response(data=serializer.errors, status=status.HTTP_400_BAD_REQUEST)

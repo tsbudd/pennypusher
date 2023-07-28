@@ -347,7 +347,7 @@ class BillSerializer(serializers.ModelSerializer):
     class Meta:
         model = Bills
         fields = ['pusher', 'user', 'item', 'amount', 'party', 'fund',
-                  'budget', 'category', 'status', 'due_date']
+                  'budget', 'status', 'due_date', 'timestamp']
 
 
 class SubscriptionSerializer(serializers.ModelSerializer):
@@ -379,5 +379,5 @@ class TradeSerializer(serializers.ModelSerializer):
         return trade
 
     class Meta:
-        model = Bills
-        fields = ['pusher']
+        model = Trade
+        fields = ['pusher', 'item', 'amount', 'status', 'type']

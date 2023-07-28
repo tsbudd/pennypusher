@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from django.http import HttpResponse
 from rest_framework.pagination import PageNumberPagination
 from .views_helper import *
@@ -34,12 +36,12 @@ def entity_new(request, format=None):
 
         # retrieving the pusher and other data
         request_data = request.data['data']
-        request_data.update({'pusher': pusher.id, 'user': user.id})
+        request_data.update({'pusher': pusher.id, 'user': user.id, 'type': e_type})
 
         # handling POST
         return handle_ingestion(e_type, pusher, request_data)
 
-    except KeyError:
+    except TypeError:
         return Response(status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -77,21 +79,40 @@ def entity_func(request, format=None):
                 return Response(data=serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
         elif request.method == 'PUT':
+            # Electives only
+            if e_type not in ['subscription', 'for_sale', 'desired_purchase', 'bill']:
+                return custom_response("Entity types of " + e_type + " cannot be modified.",
+                                       status.HTTP_400_BAD_REQUEST)
+
             request_data = request.data['data']
             request_data.update({'pusher': pusher.id, 'user': user.id, 'type': e_type})
 
             # handling POST
-            return handle_ingestion(e_type, pusher, request_data)
+            return handle_modification(e_type, pusher, request_data)
 
         elif request.method == 'DELETE':
-            entity_timestamp = request.GET.get('timestamp')
-            date_object = datetime.fromisoformat(entity_timestamp[:-1])
-            if not entity_exists(e_type, pusher, date_object):
-                return custom_response("The " + e_type + " at [" + entity_timestamp + "] does not exist.",
-                                       status.HTTP_400_BAD_REQUEST)
-            entity = get_entity(e_type, pusher, date_object)
-            entity.delete()
-            return custom_response("successful deletion", status.HTTP_204_NO_CONTENT)
+            item, timestamp = "", ""
+            if e_type in ['subscription', 'for_sale', 'desired_purchase']:
+                item = request.GET.get('item')
+                if not elective_exists(e_type, pusher, item):
+                    return custom_response("The " + e_type + " [" + item + "] does not exist.",
+                                           status.HTTP_400_BAD_REQUEST)
+                entity = get_elective(e_type, pusher, item)
+            else:
+                timestamp = request.GET.get('timestamp')
+                date_object = datetime.fromisoformat(timestamp[:-1])
+                if not entity_exists(e_type, pusher, date_object):
+                    return custom_response("The " + e_type + " at [" + timestamp + "] does not exist.",
+                                           status.HTTP_400_BAD_REQUEST)
+                entity = get_entity(e_type, pusher, date_object)
 
-    except TypeError:
+            entity.delete()
+            if e_type in ['subscription', 'for_sale', 'desired_purchase']:
+                return custom_response("Successful deletion of the " + e_type + " [" + item + "].",
+                                       status.HTTP_204_NO_CONTENT)
+            else:
+                return custom_response("Successful deletion of " + e_type + " at [" + timestamp + "].",
+                                       status.HTTP_204_NO_CONTENT)
+
+    except KeyError:
         return Response(status=status.HTTP_400_BAD_REQUEST)
