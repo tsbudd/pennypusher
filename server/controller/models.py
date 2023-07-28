@@ -65,6 +65,7 @@ class CommonEncapsulationValue(models.Model):
 
     class Meta:
         abstract = True
+        ordering = ['-timestamp']
 
 
 class BudgetValue(CommonEncapsulationValue, models.Model):
@@ -111,6 +112,7 @@ class CommonIncome(CommonEntity, models.Model):
 
     class Meta:
         abstract = True
+        ordering = ['-timestamp']
 
 
 class Income(CommonIncome, models.Model):
@@ -131,6 +133,7 @@ class CommonExpense(CommonEntity, models.Model):
 
     class Meta:
         abstract = True
+        ordering = ['-timestamp']
 
     def __str__(self):
         return "EXPENSE: %s -> PUSHER: %s -> USER: %s" % (self.item, self.pusher.name, self.user.email)
@@ -169,6 +172,9 @@ class ExpNetWorth(models.Model):
     def __str__(self):
         return "%d NET WORTH: $%.2f -> PUSHER: %s -> USER: %s" % \
             (self.id, float(self.amount), self.pusher.name, self.pusher.primaryUser.username)
+
+    class Meta:
+        ordering = ['-timestamp']
 
 
 class Bills(CommonExpense, models.Model):
