@@ -5,6 +5,28 @@ from .models import *
 UserModel = get_user_model()
 
 
+def handle_net_worth_update(acct_value):
+    # update account
+    account = Account.objects.get(id=acct_value.account.id)
+    account.cur_value = acct_value.value
+    account.save()
+
+    # get net worth
+    pusher = acct_value.account.pusher
+    net_value = Decimal(0.0)
+    all_accounts = list(Account.objects.filter(pusher=pusher))
+    for a in all_accounts:
+        cur_value = a.cur_value or Decimal('0.0')
+        net_value += cur_value
+
+    # add to exp Net worth
+    net_worth = ExpNetWorth.objects.create(
+        pusher=pusher,
+        amount=net_value
+    )
+    net_worth.save()
+
+
 class UserSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
 
@@ -213,7 +235,7 @@ class AccountSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Account
-        fields = ['pusher', 'name', 'acct_number', 'rout_number', 'pusher_key', 'pusher_name']
+        fields = ['pusher', 'name', 'acct_number', 'rout_number', 'pusher_key', 'pusher_name', 'cur_value']
 
 
 class AccountValueSerializer(serializers.ModelSerializer):
@@ -226,9 +248,11 @@ class AccountValueSerializer(serializers.ModelSerializer):
             account=validated_data['account'],
             value=validated_data['value'],
         )
-        acct_value.save()
-        return acct_value
 
+        # handle account update
+        handle_net_worth_update(acct_value)
+
+        return acct_value
 
     def get_pusher_name(self, obj):
         return obj.account.pusher.name

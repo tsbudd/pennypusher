@@ -21,6 +21,20 @@ class PusherAccess(models.Model):
         return "USER: %s -> %s -> ACCESS_TIME:%s" % (self.user.email, self.pusher, self.access_time)
 
 
+# ----------------------------------------- NET WORTH -----------------------------------------
+class ExpNetWorth(models.Model):
+    pusher = models.ForeignKey(Pusher, on_delete=models.CASCADE)
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return "%d NET WORTH: $%.2f -> PUSHER: %s" % \
+            (self.id, float(self.amount), self.pusher.name)
+
+    class Meta:
+        ordering = ['-timestamp']
+
+
 # ----------------------------------------- ENCAPSULATION -----------------------------------------
 class CommonEncapsulation(models.Model):
     pusher = models.ForeignKey(Pusher, on_delete=models.CASCADE)
@@ -52,6 +66,7 @@ class Fund(CommonEncapsulation, models.Model):
 class Account(CommonEncapsulation, models.Model):
     acct_number = models.CharField(max_length=15, null=True, blank=True)
     rout_number = models.CharField(max_length=15, null=True, blank=True)
+    cur_value = models.DecimalField(max_digits=10, decimal_places=2, null=True)
 
     def __str__(self):
         return "%d ACCOUNT: %s -> PUSHER: %s -> USER: %s" % \
@@ -162,19 +177,6 @@ class Paycheck(CommonIncome, models.Model):
     def __str__(self):
         return "%d PAYCHECK: $%.2f -> COMPANY: %s -> PUSHER: %s -> USER: %s" % \
             (self.id, float(self.amount), self.source, self.pusher.name, self.user.email)
-
-
-class ExpNetWorth(models.Model):
-    pusher = models.ForeignKey(Pusher, on_delete=models.CASCADE)
-    amount = models.DecimalField(max_digits=10, decimal_places=2)
-    timestamp = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        return "%d NET WORTH: $%.2f -> PUSHER: %s -> USER: %s" % \
-            (self.id, float(self.amount), self.pusher.name, self.pusher.primaryUser.username)
-
-    class Meta:
-        ordering = ['-timestamp']
 
 
 class Bills(CommonExpense, models.Model):

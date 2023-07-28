@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from .views_helper import *
 from rest_framework.decorators import api_view, permission_classes, authentication_classes
 from rest_framework.authentication import SessionAuthentication, BasicAuthentication
@@ -133,7 +135,7 @@ def encapsulation_value_new(request, format=None):
 
 
 # @limits(key='ip', rate='100/h')
-# @api_view(['GET', 'DELETE'])  # uncomment if i want to enable DELETE method
+# @api_view(['GET', 'DELETE'])  # uncomment if I want to enable DELETE method
 @api_view(['GET'])
 @authentication_classes([SessionAuthentication, BasicAuthentication])
 @permission_classes([IsAuthenticated])
@@ -179,6 +181,38 @@ def encapsulation_value_func(request, format=None):
             encapsulation_value.delete()
             return custom_response("Successful deletion of " + e_type + " value at [" + encapsulation.name + "].",
                                    status.HTTP_204_NO_CONTENT)
+
+    except KeyError:
+        return Response(status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['GET'])
+@authentication_classes([SessionAuthentication, BasicAuthentication])
+@permission_classes([IsAuthenticated])
+def net_worth_history(request, format=None):
+    try:
+        pusher_key = request.GET.get('pusher_key')
+        user = request.user
+
+        if not pusher_exists(pusher_key):
+            return custom_response("The pusher_key " + pusher_key + " is not valid.", status.HTTP_400_BAD_REQUEST)
+        pusher = Pusher.objects.get(key=pusher_key)
+        if not user_has_access(user, pusher):
+            return custom_response("The user " + user + " does not have access to the pusher.",
+                                   status.HTTP_401_UNAUTHORIZED)
+
+        # get page of data
+        paginator = ResponsePagination()
+        entity_data = get_entity_list('net_worth', pusher)
+
+        # Paginate the queryset before serializing it
+        result_page = paginator.paginate_queryset(entity_data, request)
+        serializer = get_serializer('net_worth', result_page, True)
+
+        if not serializer.is_valid():
+            return paginator.get_paginated_response(serializer.data)
+        else:
+            return Response(data=serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     except KeyError:
         return Response(status=status.HTTP_400_BAD_REQUEST)

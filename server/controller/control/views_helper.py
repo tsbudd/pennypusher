@@ -140,8 +140,6 @@ def entity_exists(e_type, pusher, timestamp):
             return Expense.objects.filter(pusher=pusher, timestamp=timestamp).exists()
         case 'paycheck':
             return Paycheck.objects.filter(pusher=pusher, timestamp=timestamp).exists()
-        case 'net_worth':
-            return ExpNetWorth.objects.filter(pusher=pusher, timestamp=timestamp).exists()
         case 'bill':
             return Bills.objects.filter(pusher=pusher, timestamp=timestamp).exists()
 
@@ -154,8 +152,6 @@ def get_entity(e_type, pusher, timestamp):
             return Expense.objects.get(pusher=pusher, timestamp=timestamp)
         case 'paycheck':
             return Paycheck.objects.get(pusher=pusher, timestamp=timestamp)
-        case 'net_worth':
-            return ExpNetWorth.objects.get(pusher=pusher, timestamp=timestamp)
         case 'bill':
             return Bills.objects.get(pusher=pusher, timestamp=timestamp)
 
@@ -174,6 +170,8 @@ def get_entity_list(e_type, pusher):
             return Fund.objects.filter(pusher=pusher)
         case 'account':
             return Account.objects.filter(pusher=pusher)
+        case 'net_worth':
+            return ExpNetWorth.objects.filter(pusher=pusher)
         case 'subscription':
             return Subscription.objects.filter(pusher=pusher)
         case 'for_sale':
